@@ -461,12 +461,15 @@ class Renderer3D {
     
     let viewMatrix, projMatrix;
     
+    // Always use the orbit camera for view matrix, regardless of projection mode
+    viewMatrix = Matrix4.lookAt(
+      this.cameraPosition,
+      this.cameraTarget,
+      this.cameraUp
+    );
+    
     if (this.isOrthographic) {
-      // For orthographic/isometric view
-      // Use isometric view matrix
-      viewMatrix = Matrix4.isometric();
-      
-      // Create orthographic projection
+      // For orthographic projection
       const size = this.orthoSize;
       const aspect = this.aspect;
       projMatrix = Matrix4.orthographic(
@@ -475,13 +478,7 @@ class Renderer3D {
         -100, 100                       // near, far (large range for visibility)
       );
     } else {
-      // For perspective view
-      viewMatrix = Matrix4.lookAt(
-        this.cameraPosition,
-        this.cameraTarget,
-        this.cameraUp
-      );
-      
+      // For perspective projection
       projMatrix = Matrix4.perspective(
         this.fov,
         this.aspect,
