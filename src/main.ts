@@ -4,12 +4,76 @@
  */
 
 import { WebGLApp } from './core/WebGLApp';
+import { Mesh } from './scene/Mesh';
+import { Vector3 } from './math/Vector3';
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     try {
         // Initialize the WebGL application
         const app = new WebGLApp('webgl-canvas');
+        
+        // Create and add coordinate axes
+        const axes = Mesh.createCoordinateAxes(2.0);
+        app.getScene().addNode(axes);
+        
+        // Create initial shape (wireframe cube)
+        let currentShape = Mesh.createWireframeCube(1.0, new Vector3(0, 0, 0));
+        currentShape.name = 'current_shape';
+        app.getScene().addNode(currentShape);
+        
+        // Set up shape selection handler
+        const shapeSelect = document.getElementById('shape') as HTMLSelectElement;
+        const renderModeSelect = document.getElementById('renderMode') as HTMLSelectElement;
+        
+        if (shapeSelect && renderModeSelect) {
+            const updateShape = () => {
+                const shape = shapeSelect.value;
+                const renderMode = renderModeSelect.value;
+                const isWireframe = renderMode === 'wireframe';
+                const color = isWireframe ? new Vector3(0, 0, 0) : new Vector3(0.8, 0.8, 0.8);
+                
+                // Remove current shape
+                const oldShape = app.getScene().findNodeByName('current_shape');
+                if (oldShape) {
+                    app.getScene().removeNode(oldShape);
+                }
+                
+                // Create new shape based on selection
+                let newShape: Mesh;
+                
+                switch (shape) {
+                    case 'cube':
+                        newShape = isWireframe 
+                            ? Mesh.createWireframeCube(1.0, color)
+                            : Mesh.createCube(1.0, color);
+                        break;
+                    case 'pyramid':
+                        newShape = isWireframe 
+                            ? Mesh.createWireframePyramid(1.0, 1.5, color)
+                            : Mesh.createPyramid(1.0, 1.5, color);
+                        break;
+                    case 'octahedron':
+                        newShape = isWireframe 
+                            ? Mesh.createWireframeOctahedron(1.0, color)
+                            : Mesh.createOctahedron(1.0, color);
+                        break;
+                    default:
+                        newShape = isWireframe 
+                            ? Mesh.createWireframeCube(1.0, color)
+                            : Mesh.createCube(1.0, color);
+                }
+                
+                // Add new shape to scene
+                newShape.name = 'current_shape';
+                app.getScene().addNode(newShape);
+                currentShape = newShape;
+            };
+            
+            // Set up event listeners
+            shapeSelect.addEventListener('change', updateShape);
+            renderModeSelect.addEventListener('change', updateShape);
+        }
         
         // Start the rendering loop
         app.start();

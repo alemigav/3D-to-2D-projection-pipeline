@@ -9,6 +9,7 @@ declare module '*/WebGLApp' {
     import { Scene } from '../scene/Scene';
     import { Renderer } from '../core/Renderer';
     import { UIController } from '../ui/UIController';
+    import { OrbitControls } from '../controls/OrbitControls';
 
     export class WebGLApp {
         constructor(canvasId: string);
@@ -18,6 +19,7 @@ declare module '*/WebGLApp' {
         getScene(): Scene;
         getRenderer(): Renderer;
         getUI(): UIController;
+        getControls(): OrbitControls;
     }
 }
 
@@ -96,6 +98,71 @@ declare module '*/Renderer' {
     }
 }
 
+declare module '*/Geometry' {
+    import { Vector3 } from '../math/Vector3';
+    import { Renderer } from '../core/Renderer';
+
+    export enum PrimitiveType {
+        POINTS,
+        LINES,
+        LINE_STRIP,
+        LINE_LOOP,
+        TRIANGLES,
+        TRIANGLE_STRIP,
+        TRIANGLE_FAN
+    }
+
+    export class Geometry {
+        name: string;
+        constructor(name?: string);
+        setPositions(positions: Float32Array): void;
+        setNormals(normals: Float32Array): void;
+        setColors(colors: Float32Array): void;
+        setIndices(indices: Uint16Array): void;
+        setPrimitiveType(type: PrimitiveType): void;
+        upload(renderer: Renderer): void;
+        bind(renderer: Renderer, gl: WebGLRenderingContext | WebGL2RenderingContext): void;
+        draw(gl: WebGLRenderingContext | WebGL2RenderingContext): void;
+        getBoundingCenter(): Vector3;
+        getBoundingRadius(): number;
+        static createCube(size?: number): Geometry;
+        static createWireframeCube(size?: number): Geometry;
+        static createCoordinateAxes(size?: number): Geometry;
+    }
+}
+
+declare module '*/Mesh' {
+    import { SceneNode } from '../scene/SceneNode';
+    import { Geometry } from '../core/Geometry';
+    import { Renderer } from '../core/Renderer';
+    import { Vector3 } from '../math/Vector3';
+
+    export enum MaterialType {
+        Basic,
+        Wireframe
+    }
+
+    export interface Material {
+        type: MaterialType;
+        color: Vector3;
+        wireframeColor?: Vector3;
+        wireframe?: boolean;
+        opacity?: number;
+    }
+
+    export class Mesh extends SceneNode {
+        constructor(geometry: Geometry, material: Material, name?: string);
+        getGeometry(): Geometry;
+        setGeometry(geometry: Geometry): void;
+        getMaterial(): Material;
+        setMaterial(material: Material): void;
+        render(renderer: Renderer): void;
+        static createWireframeCube(size?: number, color?: Vector3): Mesh;
+        static createCube(size?: number, color?: Vector3): Mesh;
+        static createCoordinateAxes(size?: number): Mesh;
+    }
+}
+
 declare module '*/Scene' {
     import { SceneNode } from '../scene/SceneNode';
     import { Vector3 } from '../math/Vector3';
@@ -151,6 +218,22 @@ declare module '*/SceneNode' {
         scaleBy(x: number, y: number, z: number): void;
         update(deltaTime: number): void;
         clone(): SceneNode;
+    }
+}
+
+declare module '*/OrbitControls' {
+    import { Camera } from '../core/Camera';
+    import { Vector3 } from '../math/Vector3';
+
+    export class OrbitControls {
+        constructor(camera: Camera, canvas: HTMLCanvasElement);
+        update(): void;
+        setRotationSpeed(speed: number): void;
+        setZoomSpeed(speed: number): void;
+        setPanSpeed(speed: number): void;
+        setDamping(enable: boolean, factor?: number): void;
+        setDistanceLimits(min: number, max: number): void;
+        setPolarAngleLimits(min: number, max: number): void;
     }
 }
 

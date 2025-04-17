@@ -7,6 +7,7 @@ import { Renderer } from './Renderer';
 import { Scene } from '../scene/Scene';
 import { UIController } from '../ui/UIController';
 import { Vector3 } from '../math/Vector3';
+import { OrbitControls } from '../controls/OrbitControls';
 
 // Note: There are circular dependencies between WebGLApp, Camera, Renderer, Scene, and UIController
 // TypeScript can handle this at compile time, but we need to be careful about initialization order at runtime
@@ -17,6 +18,7 @@ export class WebGLApp {
     private scene: Scene;
     private camera: Camera;
     private ui: UIController;
+    private controls: OrbitControls;
     private isRunning: boolean = false;
     private lastFrameTime: number = 0;
     private animationFrameId: number | null = null;
@@ -46,6 +48,9 @@ export class WebGLApp {
 
         // Create the UI controller
         this.ui = new UIController(this);
+
+        // Create orbit controls
+        this.controls = new OrbitControls(this.camera, this.canvas);
 
         // Set up event listeners
         this.setupEventListeners();
@@ -210,6 +215,9 @@ export class WebGLApp {
         // Update scene objects
         this.scene.update(deltaTime);
 
+        // Update orbit controls
+        this.controls.update();
+
         // Update UI
         this.ui.update();
     }
@@ -247,5 +255,12 @@ export class WebGLApp {
      */
     getUI(): UIController {
         return this.ui;
+    }
+
+    /**
+     * Get the orbit controls
+     */
+    getControls(): OrbitControls {
+        return this.controls;
     }
 }

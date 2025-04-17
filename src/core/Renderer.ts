@@ -582,11 +582,14 @@ export class Renderer {
         // Skip invisible nodes
         if (!node.visible) return;
         
-        // Set model matrix uniform
-        this.setUniform('uModelMatrix', node.worldMatrix);
-        
-        // TODO: Render node geometry
-        // This will be implemented when we add mesh support
+        // Check if node is a Mesh
+        if ('render' in node && typeof (node as any).render === 'function') {
+            // Call the mesh's render method
+            (node as any).render(this);
+        } else {
+            // Set model matrix uniform for non-mesh nodes
+            this.setUniform('uModelMatrix', node.worldMatrix);
+        }
     }
     
     /**
