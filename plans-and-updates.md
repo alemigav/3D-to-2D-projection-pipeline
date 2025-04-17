@@ -62,6 +62,7 @@ WebGLApp
 - [x] Support both perspective and orthographic projections
 - [x] Recreate the same shapes (cube, pyramid, octahedron)
 - [x] Implement coordinate axes visualization
+- [x] Implement object selection and manipulation
 - [ ] Create matrix displays for educational purposes
 - [ ] Match all UI controls from the original implementation
 
@@ -113,7 +114,8 @@ WebGLApp
 /
 ├── index.html                  # Main HTML file
 ├── css/
-│   └── styles.css              # UI styles
+│   ├── styles.css              # UI styles
+│   └── interaction.css         # Interaction controls styles
 ├── src/
 │   ├── main.ts                 # Application entry point
 │   ├── math/
@@ -132,6 +134,11 @@ WebGLApp
 │   │   ├── Mesh.ts             # Renderable object
 │   │   ├── Scene.ts            # Scene graph
 │   │   └── shapes/             # Predefined shapes
+│   ├── controls/
+│   │   └── OrbitControls.ts    # Camera orbit controls
+│   ├── interaction/
+│   │   ├── SelectionManager.ts # Object selection
+│   │   └── InteractionController.ts # Interaction management
 │   ├── materials/
 │   │   ├── Material.ts         # Base material
 │   │   ├── WireframeMaterial.ts # Wireframe rendering
@@ -185,7 +192,17 @@ This section will track progress and updates as the implementation proceeds.
 - Added shape selection UI with wireframe/solid rendering options
 - Integrated projection mode toggle with camera system
 
-### Update 6: Educational Features (Upcoming)
+### Update 6: Object Selection and Manipulation (Completed)
+- Implemented SelectionManager for object selection via ray casting
+- Created InteractionController to manage camera and object manipulation
+- Added ability to select objects with mouse click
+- Implemented object manipulation (rotation, translation, scaling)
+- Added visual feedback for selected objects (blue highlight)
+- Created UI controls for toggling between camera and object control modes
+- Added keyboard shortcuts (Tab to toggle modes, Escape to deselect)
+- Updated instructions to explain the new interaction model
+
+### Update 7: Educational Features (Upcoming)
 - Create matrix displays for educational purposes
 - Implement UI controls for manipulating 3D objects
 - Add support for solid rendering with lighting

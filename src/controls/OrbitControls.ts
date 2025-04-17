@@ -135,8 +135,24 @@ export class OrbitControls {
         // Left mouse button behavior depends on projection type
         if (this.mouseButton === 0) {
             if (isOrthographic) {
-                // For orthographic projection, left mouse button pans the camera
-                this.handlePan(deltaX, deltaY);
+                // For orthographic projection, left mouse button changes orientation
+                // Determine which axis to rotate around based on mouse movement
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal movement rotates around Y axis
+                    this.camera.orbitTheta -= deltaX * this.rotationSpeed;
+                } else {
+                    // Vertical movement rotates around X axis
+                    this.camera.orbitPhi -= deltaY * this.rotationSpeed;
+                    
+                    // Clamp phi to avoid gimbal lock
+                    this.camera.orbitPhi = Math.max(
+                        this.minPolarAngle,
+                        Math.min(this.maxPolarAngle, this.camera.orbitPhi)
+                    );
+                }
+                
+                // Update camera position
+                this.camera.updateFromOrbit();
             } else {
                 // For perspective projection, left mouse button orbits the camera
                 // Update theta (horizontal angle)

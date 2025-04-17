@@ -6,6 +6,8 @@
 import { WebGLApp } from './core/WebGLApp';
 import { Mesh } from './scene/Mesh';
 import { Vector3 } from './math/Vector3';
+import { SelectionManager } from './interaction/SelectionManager';
+import { InteractionController, InteractionMode } from './interaction/InteractionController';
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -75,12 +77,58 @@ document.addEventListener('DOMContentLoaded', () => {
             renderModeSelect.addEventListener('change', updateShape);
         }
         
+        // Initialize the interaction system
+        const canvas = document.getElementById('webgl-canvas') as HTMLCanvasElement;
+        const selectionManager = new SelectionManager(
+            app.getScene(),
+            app.getCamera(),
+            app.getRenderer(),
+            canvas
+        );
+        
+        const interactionController = new InteractionController(
+            app.getCamera(),
+            app.getScene(),
+            canvas,
+            selectionManager
+        );
+        
+        // Set up mode change callback
+        interactionController.setOnModeChange((mode) => {
+            // Update UI to reflect the current mode
+            const modeText = mode === InteractionMode.CameraControl ? 'Camera Control' : 'Object Control';
+            console.log(`Interaction mode changed to: ${modeText}`);
+            
+            // Update the mode display in the UI
+            const modeDisplay = document.getElementById('interactionModeDisplay');
+            if (modeDisplay) {
+                modeDisplay.textContent = modeText;
+                
+                // Update color based on mode
+                if (mode === InteractionMode.CameraControl) {
+                    modeDisplay.style.color = '#2196F3'; // Blue for camera
+                } else {
+                    modeDisplay.style.color = '#FF9800'; // Orange for object
+                }
+            }
+        });
+        
+        // Set up toggle button
+        const toggleButton = document.getElementById('toggleInteractionMode');
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => {
+                interactionController.toggleMode();
+            });
+        }
+        
         // Start the rendering loop
         app.start();
         
         console.log('WebGL 3D to 2D Projection Demo initialized successfully');
     } catch (error) {
         console.error('Failed to initialize WebGL application:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error('Error stack:', (error as Error).stack);
         
         // Display error message to the user
         const canvas = document.getElementById('webgl-canvas');

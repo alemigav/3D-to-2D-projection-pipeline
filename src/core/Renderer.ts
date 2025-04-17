@@ -612,4 +612,11 @@ export class Renderer {
     isWebGL2(): boolean {
         return this.capabilities?.isWebGL2 || false;
     }
+    
+    /**
+     * Get the canvas element
+     */
+    getCanvas(): HTMLCanvasElement {
+        return this.canvas;
+    }
 }

@@ -7,7 +7,8 @@ import { Renderer } from './Renderer';
 import { Scene } from '../scene/Scene';
 import { UIController } from '../ui/UIController';
 import { Vector3 } from '../math/Vector3';
-import { OrbitControls } from '../controls/OrbitControls';
+import { SelectionManager } from '../interaction/SelectionManager';
+import { InteractionController, InteractionMode } from '../interaction/InteractionController';
 
 // Note: There are circular dependencies between WebGLApp, Camera, Renderer, Scene, and UIController
 // TypeScript can handle this at compile time, but we need to be careful about initialization order at runtime
@@ -18,7 +19,8 @@ export class WebGLApp {
     private scene: Scene;
     private camera: Camera;
     private ui: UIController;
-    private controls: OrbitControls;
+    private selectionManager: SelectionManager | null = null;
+    private interactionController: InteractionController | null = null;
     private isRunning: boolean = false;
     private lastFrameTime: number = 0;
     private animationFrameId: number | null = null;
@@ -46,11 +48,23 @@ export class WebGLApp {
         this.camera.position = new Vector3(3, 3, 3);
         this.camera.lookAt(new Vector3(0, 0, 0));
 
-        // Create the UI controller
-        this.ui = new UIController(this);
+        // Create selection manager FIRST
+        this.selectionManager = new SelectionManager(this.scene, this.camera, this.renderer, this.canvas);
+        
+        // Create interaction controller SECOND
+        this.interactionController = new InteractionController(this.camera, this.scene, this.canvas, this.selectionManager);
+        
+        // Set up mode change callback for interaction controller
+        this.interactionController.setOnModeChange((mode) => {
+            // Update UI to reflect the current mode
+            const modeText = mode === InteractionMode.CameraControl ? 'Camera Control' : 'Object Control';
+            console.log(`Interaction mode changed to: ${modeText}`);
+            // Note: We might need to update the UI display here as well, 
+            // but UIController handles its own display updates now.
+        });
 
-        // Create orbit controls
-        this.controls = new OrbitControls(this.camera, this.canvas);
+        // Create the UI controller LAST (so it can access the initialized controllers)
+        this.ui = new UIController(this);
 
         // Set up event listeners
         this.setupEventListeners();
@@ -215,8 +229,10 @@ export class WebGLApp {
         // Update scene objects
         this.scene.update(deltaTime);
 
-        // Update orbit controls
-        this.controls.update();
+        // Update interaction controller
+        if (this.interactionController) {
+            this.interactionController.update();
+        }
 
         // Update UI
         this.ui.update();
@@ -258,9 +274,22 @@ export class WebGLApp {
     }
 
     /**
-     * Get the orbit controls
+     * Get the interaction controller
      */
-    getControls(): OrbitControls {
-        return this.controls;
+    getInteractionController(): InteractionController {
+        if (!this.interactionController) {
+            throw new Error('InteractionController not initialized');
+        }
+        return this.interactionController;
+    }
+    
+    /**
+     * Get the selection manager
+     */
+    getSelectionManager(): SelectionManager {
+        if (!this.selectionManager) {
+            throw new Error('SelectionManager not initialized');
+        }
+        return this.selectionManager;
     }
 }

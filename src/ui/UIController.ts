@@ -5,6 +5,7 @@
 import { WebGLApp } from '../core/WebGLApp';
 import { Vector3 } from '../math/Vector3';
 import { ProjectionType } from '../core/Camera';
+import { InteractionController, InteractionMode } from '../interaction/InteractionController';
 
 // This is a circular import, but TypeScript can handle it
 // The actual implementation will be loaded at runtime
@@ -109,6 +110,9 @@ export class UIController {
             // This will be implemented when we add animation support
             console.log(`Auto-rotate: ${checked}`);
         });
+        
+        // Interaction mode controls
+        this.setupInteractionModeControls();
     }
     
     /**
@@ -262,6 +266,122 @@ export class UIController {
     update(): void {
         // Update matrix displays
         this.updateMatrixDisplays();
+        
+        // Update interaction mode display
+        this.updateInteractionModeDisplay();
+    }
+    
+    /**
+     * Set up interaction mode controls
+     */
+    private setupInteractionModeControls(): void {
+        // Create container for interaction mode controls if it doesn't exist
+        let interactionControls = document.getElementById('interactionControls');
+        if (!interactionControls) {
+            // Create the container
+            interactionControls = document.createElement('div');
+            interactionControls.id = 'interactionControls';
+            interactionControls.className = 'control-group';
+            
+            // Create heading
+            const heading = document.createElement('h3');
+            heading.textContent = 'Interaction Mode';
+            interactionControls.appendChild(heading);
+            
+            // Create mode display
+            const modeDisplay = document.createElement('div');
+            modeDisplay.id = 'interactionModeDisplay';
+            modeDisplay.className = 'mode-display';
+            modeDisplay.textContent = 'Camera Control';
+            interactionControls.appendChild(modeDisplay);
+            
+            // Create toggle button
+            const toggleButton = document.createElement('button');
+            toggleButton.id = 'toggleInteractionMode';
+            toggleButton.textContent = 'Toggle Mode (Tab)';
+            toggleButton.addEventListener('click', () => {
+                const interactionController = this.app.getInteractionController();
+                interactionController.toggleMode();
+                this.updateInteractionModeDisplay();
+            });
+            interactionControls.appendChild(toggleButton);
+            
+            // Create selection info
+            const selectionInfo = document.createElement('div');
+            selectionInfo.id = 'selectionInfo';
+            selectionInfo.className = 'selection-info';
+            selectionInfo.textContent = 'No object selected';
+            interactionControls.appendChild(selectionInfo);
+            
+            // Add to the UI
+            const controlPanel = document.querySelector('.control-panel');
+            if (controlPanel) {
+                controlPanel.appendChild(interactionControls);
+            } else {
+                document.body.appendChild(interactionControls);
+            }
+        }
+        
+        // Set up event listeners for selection changes
+        const canvas = this.app.getRenderer().getCanvas();
+        
+        canvas.addEventListener('object-selected', ((event: Event) => {
+            const customEvent = event as CustomEvent;
+            const node = customEvent.detail?.node;
+            const selectionInfo = document.getElementById('selectionInfo');
+            
+            if (selectionInfo && node) {
+                selectionInfo.textContent = `Selected: ${node.name || 'Unnamed Object'}`;
+                selectionInfo.style.color = '#4CAF50'; // Green
+            }
+            
+            this.updateInteractionModeDisplay();
+        }) as EventListener);
+        
+        canvas.addEventListener('object-deselected', (() => {
+            const selectionInfo = document.getElementById('selectionInfo');
+            
+            if (selectionInfo) {
+                selectionInfo.textContent = 'No object selected';
+                selectionInfo.style.color = ''; // Reset color
+            }
+            
+            this.updateInteractionModeDisplay();
+        }) as EventListener);
+        
+        // Initial update
+        this.updateInteractionModeDisplay();
+    }
+    
+    /**
+     * Update the interaction mode display
+     */
+    private updateInteractionModeDisplay(): void {
+        const interactionController = this.app.getInteractionController();
+        const modeDisplay = document.getElementById('interactionModeDisplay');
+        const toggleButton = document.getElementById('toggleInteractionMode');
+        
+        if (modeDisplay) {
+            const mode = interactionController.getMode();
+            const modeText = mode === InteractionMode.CameraControl ? 'Camera Control' : 'Object Control';
+            modeDisplay.textContent = modeText;
+            
+            // Update color based on mode
+            if (mode === InteractionMode.CameraControl) {
+                modeDisplay.style.color = '#2196F3'; // Blue for camera
+            } else {
+                modeDisplay.style.color = '#FF9800'; // Orange for object
+            }
+        }
+        
+        if (toggleButton) {
+            // Disable toggle button if no object is selected and in camera mode
+            const selectionManager = this.app.getSelectionManager();
+            const hasSelection = selectionManager.getSelectedNode() !== null;
+            const isCameraMode = interactionController.getMode() === InteractionMode.CameraControl;
+            
+            (toggleButton as HTMLButtonElement).disabled = isCameraMode && !hasSelection;
+        }
     }
     
     /**

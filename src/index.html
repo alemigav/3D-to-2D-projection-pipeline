@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebGL 3D to 2D Projection Demo</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/interaction.css">
 </head>
 <body>
     <div class="container">
@@ -13,9 +14,13 @@
         <div class="instructions">
             <h3>Interaction Guide</h3>
             <ul>
-                <li><strong>Mouse Drag:</strong> Rotate the 3D object</li>
-                <li><strong>Mouse Wheel:</strong> Zoom in/out</li>
-                <li><strong>Controls Below:</strong> Adjust camera and projection parameters</li>
+                <li><strong>Left Mouse Drag:</strong> Rotate camera or selected object</li>
+                <li><strong>Right Mouse Drag:</strong> Pan camera or move selected object</li>
+                <li><strong>Mouse Wheel:</strong> Zoom camera or scale selected object</li>
+                <li><strong>Left Click:</strong> Select an object</li>
+                <li><strong>Tab Key:</strong> Toggle between camera and object control modes</li>
+                <li><strong>Escape Key:</strong> Deselect object</li>
+                <li><strong>Controls Below:</strong> Adjust camera, projection, and object parameters</li>
                 <li><strong>Full Screen:</strong> Click the button in the top-right of the canvas</li>
             </ul>
         </div>
@@ -131,5 +136,7 @@
             </ol>
         </div>
     </div>
+    
+    <script type="module" src="main.js"></script>
 </body>
 </html>
