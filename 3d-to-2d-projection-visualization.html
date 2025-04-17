@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D to 2D Projection Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.5.0/math.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .top-container {
+            display: flex;
+            height: 70%;
+        }
+        .view {
+            flex: 1;
+            position: relative;
+        }
+        .view-title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 10;
+            font-weight: bold;
+        }
+        .bottom-container {
+            height: 30%;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+        }
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        .control-group h3 {
+            margin: 0 0 10px 0;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .control-row label {
+            width: 80px;
+        }
+        input[type="range"] {
+            width: 120px;
+        }
+        .value-display {
+            width: 50px;
+            text-align: right;
+            margin-left: 10px;
+        }
+        .math-section {
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 4px 8px;
+            text-align: center;
+        }
+        .matrix {
+            font-family: monospace;
+            white-space: pre;
+        }
+        #vertex-table {
+            margin-bottom: 20px;
+        }
+        .pipeline-step {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background-color: #f0f7ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-container">
+            <div class="view" id="world-view">
+                <div class="view-title">World View</div>
+            </div>
+            <div class="view" id="camera-view">
+                <div class="view-title">Camera View</div>
+            </div>
+        </div>
+        <div class="bottom-container">
+            <div class="control-panel">
+                <div class="control-group">
+                    <h3>Camera Controls</h3>
+                    <div class="control-row">
+                        <label>Cam X:</label>
+                        <input type="range" id="camera-x" min="-10" max="10" step="0.1" value="5">
+                        <span class="value-display" id="camera-x-value">5.0</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Cam Y:</label>
+                        <input type="range" id="camera-y" min="-10" max="10" step="0.1" value="5">
+                        <span class="value-display" id="camera-y-value">5.0</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Cam Z:</label>
+                        <input type="range" id="camera-z" min="-10" max="10" step="0.1" value="5">
+                        <span class="value-display" id="camera-z-value">5.0</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>Projection Controls</h3>
+                    <div class="control-row">
+                        <label>FOV:</label>
+                        <input type="range" id="fov" min="30" max="120" step="1" value="75">
+                        <span class="value-display" id="fov-value">75°</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Near:</label>
+                        <input type="range" id="near" min="0.1" max="5" step="0.1" value="0.1">
+                        <span class="value-display" id="near-value">0.1</span>
+                    </div>
+                    <div class="control-row">
+                        <label>Far:</label>
+                        <input type="range" id="far" min="5" max="50" step="1" value="30">
+                        <span class="value-display" id="far-value">30</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>Object Controls</h3>
+                    <div class="control-row">
+                        <label>Shape:</label>
+                        <select id="shape-selector">
+                            <option value="cube">Cube</option>
+                            <option value="tetrahedron">Tetrahedron</option>
+                            <option value="dodecahedron">Dodecahedron</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label>Rotation:</label>
+                        <input type="checkbox" id="auto-rotate" checked>
+                        <span>Auto-rotate</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="math-section">
+                <h3>Vertex Transformation Pipeline</h3>
+                <div id="vertex-table"></div>
+                <div class="pipeline-steps">
+                    <div class="pipeline-step">
+                        <h4>1. View Matrix</h4>
+                        <div id="view-matrix" class="matrix"></div>
+                    </div>
+                    <div class="pipeline-step">
+                        <h4>2. Projection Matrix</h4>
+                        <div id="projection-matrix" class="matrix"></div>
+                    </div>
+                    <div class="pipeline-step">
+                        <h4>3. Viewport Transformation</h4>
+                        <div>Screen Width: <span id="screen-width"></span>, Screen Height: <span id="screen-height"></span></div>
+                        <div>x<sub>screen</sub> = (x<sub>ndc</sub> + 1) × Width/2</div>
+                        <div>y<sub>screen</sub> = (1 - y<sub>ndc</sub>) × Height/2</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External JavaScript file -->
+    <script src="3d-to-2d-projection.js"></script>
+</body>
+</html>
