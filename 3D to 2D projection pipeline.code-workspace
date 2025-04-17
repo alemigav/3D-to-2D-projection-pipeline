@@ -3,5 +3,9 @@
 		{
 			"path": "D:/Aplicativos e jogos/Jogos/3D to 2D projection pipeline"
 		}
-	]
+	],
+	"settings": {
+		"terminal.integrated.sendKeybindingsToShell": true,
+		"terminal.integrated.allowChords": true
+	}
 }

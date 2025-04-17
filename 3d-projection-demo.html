@@ -13,6 +13,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            transition: padding 0.3s ease;
+        }
+        
+        body.fullscreen {
+            padding: 0;
         }
         
         .container {
@@ -20,17 +25,32 @@
             flex-direction: column;
             max-width: 1000px;
             width: 100%;
+            transition: max-width 0.3s ease;
+        }
+        
+        .container.fullscreen {
+            max-width: 100%;
         }
         
         h1 {
             text-align: center;
             color: #333;
             margin-bottom: 20px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .fullscreen h1 {
+            display: none;
         }
         
         .canvas-container {
             position: relative;
             margin-bottom: 20px;
+            transition: margin 0.3s ease;
+        }
+        
+        .fullscreen .canvas-container {
+            margin-bottom: 0;
         }
         
         canvas {
@@ -39,6 +59,14 @@
             display: block;
             margin: 0 auto;
             border: 1px solid #ddd;
+            transition: width 0.3s ease, height 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .fullscreen canvas {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            box-shadow: none;
         }
         
         .controls {
@@ -50,6 +78,23 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease, transform 0.3s ease, position 0.3s ease;
+            z-index: 10;
+        }
+        
+        .fullscreen .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            opacity: 0.2;
+            transform: translateY(70%);
+            max-width: calc(100% - 40px);
+        }
+        
+        .fullscreen .controls:hover {
+            opacity: 1;
+            transform: translateY(0);
         }
         
         .control-group {
@@ -100,6 +145,11 @@
             padding: 10px 15px;
             margin-bottom: 20px;
             border-radius: 0 4px 4px 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .fullscreen .instructions {
+            display: none;
         }
         
         .instructions h3 {
@@ -119,6 +169,11 @@
             padding: 20px;
             margin-top: 20px;
             text-align: left;
+            transition: opacity 0.3s ease, height 0.3s ease, margin 0.3s ease;
+        }
+        
+        .fullscreen #math-explanation {
+            display: none;
         }
         
         #math-explanation h2 {
@@ -146,6 +201,52 @@
             overflow-x: auto;
             margin-top: 10px;
         }
+        
+        .fullscreen-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            z-index: 100;
+            transition: background-color 0.3s ease;
+        }
+        
+        .fullscreen-button:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .fullscreen-button i {
+            font-style: normal;
+        }
+        
+        .exit-fullscreen-hint {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .fullscreen .exit-fullscreen-hint {
+            opacity: 1;
+            animation: fadeOut 3s forwards;
+            animation-delay: 2s;
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -158,11 +259,16 @@
                 <li><strong>Mouse Drag:</strong> Rotate the 3D object</li>
                 <li><strong>Mouse Wheel:</strong> Zoom in/out</li>
                 <li><strong>Controls Below:</strong> Adjust camera and projection parameters</li>
+                <li><strong>Full Screen:</strong> Click the button in the top-right of the canvas</li>
             </ul>
         </div>
         
         <div class="canvas-container">
             <canvas id="projectionCanvas" width="800" height="500"></canvas>
+            <button class="fullscreen-button" id="fullscreenToggle">
+                <i class="fullscreen-icon">⛶</i> Full Screen
+            </button>
+            <div class="exit-fullscreen-hint">Press ESC or click button again to exit full screen</div>
         </div>
         
         <div class="controls">
@@ -269,6 +375,7 @@
     <script>
         // Initialize the renderer
         let renderer;
+        let isFullscreen = false;
         
         // Format matrix for display
         function formatMatrix(matrix) {
@@ -291,13 +398,16 @@
         
         // Update matrix displays
         function updateMatrixDisplays() {
-            let viewMatrix, projMatrix;
+            // Always use the orbit camera for view matrix, regardless of projection mode
+            const viewMatrix = Matrix4.lookAt(
+                renderer.cameraPosition,
+                renderer.cameraTarget,
+                renderer.cameraUp
+            );
             
+            let projMatrix;
             if (renderer.isOrthographic) {
-                // For orthographic/isometric view
-                viewMatrix = Matrix4.isometric();
-                
-                // Create orthographic projection
+                // For orthographic projection
                 const size = renderer.orthoSize;
                 const aspect = renderer.aspect;
                 projMatrix = Matrix4.orthographic(
@@ -306,13 +416,7 @@
                     -100, 100                       // near, far (large range for visibility)
                 );
             } else {
-                // For perspective view
-                viewMatrix = Matrix4.lookAt(
-                    renderer.cameraPosition,
-                    renderer.cameraTarget,
-                    renderer.cameraUp
-                );
-                
+                // For perspective projection
                 projMatrix = Matrix4.perspective(
                     renderer.fov,
                     renderer.aspect,
@@ -326,10 +430,53 @@
             document.getElementById('proj-matrix').textContent = formatMatrix(projMatrix);
         }
         
+        // Toggle fullscreen mode
+        function toggleFullscreen() {
+            const container = document.querySelector('.container');
+            const body = document.body;
+            const canvas = document.getElementById('projectionCanvas');
+            const fullscreenButton = document.getElementById('fullscreenToggle');
+            
+            isFullscreen = !isFullscreen;
+            
+            if (isFullscreen) {
+                container.classList.add('fullscreen');
+                body.classList.add('fullscreen');
+                fullscreenButton.innerHTML = '<i class="fullscreen-icon">⮌</i> Exit';
+                
+                // Resize canvas to fill the screen
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                renderer.resize(window.innerWidth, window.innerHeight);
+            } else {
+                container.classList.remove('fullscreen');
+                body.classList.remove('fullscreen');
+                fullscreenButton.innerHTML = '<i class="fullscreen-icon">⛶</i> Full Screen';
+                
+                // Restore original canvas size
+                canvas.width = 800;
+                canvas.height = 500;
+                renderer.resize(800, 500);
+            }
+            
+            // Update matrix displays after resize
+            updateMatrixDisplays();
+        }
+        
         // Initialize when the page loads
         window.addEventListener('load', () => {
             // Create renderer
             renderer = new Renderer3D('projectionCanvas');
+            
+            // Set up fullscreen toggle
+            document.getElementById('fullscreenToggle').addEventListener('click', toggleFullscreen);
+            
+            // Add keyboard shortcut for exiting fullscreen (ESC key)
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isFullscreen) {
+                    toggleFullscreen();
+                }
+            });
             
             // Set up control event listeners
             document.getElementById('camera-x').addEventListener('input', (e) => {
@@ -407,9 +554,8 @@
             
             // Handle window resize
             window.addEventListener('resize', () => {
-                // Only resize if the canvas is full-width
-                if (renderer.canvas.width === window.innerWidth) {
-                    renderer.resize(window.innerWidth, window.innerHeight * 0.6);
+                if (isFullscreen) {
+                    renderer.resize(window.innerWidth, window.innerHeight);
                 }
             });
             

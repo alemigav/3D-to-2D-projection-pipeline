@@ -373,11 +373,24 @@ class Renderer3D {
       // Zoom factor with limits to prevent zooming too close or too far
       const factor = 1 - delta * 0.1;
       
-      // Apply zoom by changing orbit radius
-      this.orbitRadius = Math.max(1.5, Math.min(20, this.orbitRadius * factor));
-      
-      // Update camera position based on new orbit radius
-      this.updateCameraFromOrbit();
+      if (this.isOrthographic) {
+        // For orthographic mode, adjust the orthographic size
+        this.orthoSize = Math.max(1, Math.min(20, this.orthoSize * (1 + delta * 0.1)));
+        
+        // Update the orthoSize slider if it exists
+        const orthoSizeSlider = document.getElementById('orthoSize');
+        const orthoSizeValue = document.getElementById('orthoSize-value');
+        if (orthoSizeSlider && orthoSizeValue) {
+          orthoSizeSlider.value = this.orthoSize;
+          orthoSizeValue.textContent = this.orthoSize.toFixed(1);
+        }
+      } else {
+        // For perspective mode, adjust the orbit radius
+        this.orbitRadius = Math.max(1.5, Math.min(20, this.orbitRadius * factor));
+        
+        // Update camera position based on new orbit radius
+        this.updateCameraFromOrbit();
+      }
     });
   }
   
