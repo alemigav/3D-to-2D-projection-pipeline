@@ -2,7 +2,7 @@
  * OrbitControls class
  * Handles mouse interaction for orbiting the camera around a target
  */
-import { Camera } from '../core/Camera';
+import { Camera, ProjectionType } from '../core/Camera';
 import { Vector3 } from '../math/Vector3';
 
 export class OrbitControls {
@@ -129,41 +129,59 @@ export class OrbitControls {
      * @param deltaY Change in Y position
      */
     private handleMouseMove(deltaX: number, deltaY: number): void {
-        // Left mouse button: orbit
+        // Get camera's projection type
+        const isOrthographic = this.camera.projectionType === ProjectionType.Orthographic;
+        
+        // Left mouse button behavior depends on projection type
         if (this.mouseButton === 0) {
-            // Update theta (horizontal angle)
-            this.camera.orbitTheta -= deltaX * this.rotationSpeed;
-            
-            // Update phi (vertical angle)
-            this.camera.orbitPhi -= deltaY * this.rotationSpeed;
-            
-            // Clamp phi to avoid gimbal lock
-            this.camera.orbitPhi = Math.max(
-                this.minPolarAngle,
-                Math.min(this.maxPolarAngle, this.camera.orbitPhi)
-            );
+            if (isOrthographic) {
+                // For orthographic projection, left mouse button pans the camera
+                this.handlePan(deltaX, deltaY);
+            } else {
+                // For perspective projection, left mouse button orbits the camera
+                // Update theta (horizontal angle)
+                this.camera.orbitTheta -= deltaX * this.rotationSpeed;
+                
+                // Update phi (vertical angle)
+                this.camera.orbitPhi -= deltaY * this.rotationSpeed;
+                
+                // Clamp phi to avoid gimbal lock
+                this.camera.orbitPhi = Math.max(
+                    this.minPolarAngle,
+                    Math.min(this.maxPolarAngle, this.camera.orbitPhi)
+                );
+            }
         }
         
-        // Right mouse button or middle mouse button: pan
+        // Right mouse button or middle mouse button: pan (for both projection types)
         else if (this.mouseButton === 2 || this.mouseButton === 1) {
-            // Calculate pan amount based on camera's distance to target
-            const distance = this.camera.orbitRadius;
-            const panX = -deltaX * this.panSpeed * distance;
-            const panY = deltaY * this.panSpeed * distance;
-            
-            // Get camera's right and up vectors
-            const forward = this.camera.target.subtract(this.camera.position).normalize();
-            const right = forward.cross(this.camera.up).normalize();
-            const up = right.cross(forward).normalize();
-            
-            // Update target position
-            const target = this.camera.target;
-            this.camera.target = target.add(right.multiply(panX)).add(up.multiply(panY));
-            
-            // Update camera position to maintain the same relative position
-            const position = this.camera.position;
-            this.camera.position = position.add(right.multiply(panX)).add(up.multiply(panY));
+            this.handlePan(deltaX, deltaY);
         }
+    }
+    
+    /**
+     * Handle panning movement
+     * @param deltaX Change in X position
+     * @param deltaY Change in Y position
+     */
+    private handlePan(deltaX: number, deltaY: number): void {
+        // Calculate pan amount based on camera's distance to target
+        const distance = this.camera.orbitRadius;
+        const panX = -deltaX * this.panSpeed * distance;
+        const panY = deltaY * this.panSpeed * distance;
+        
+        // Get camera's right and up vectors
+        const forward = this.camera.target.subtract(this.camera.position).normalize();
+        const right = forward.cross(this.camera.up).normalize();
+        const up = right.cross(forward).normalize();
+        
+        // Update target position
+        const target = this.camera.target;
+        this.camera.target = target.add(right.multiply(panX)).add(up.multiply(panY));
+        
+        // Update camera position to maintain the same relative position
+        const position = this.camera.position;
+        this.camera.position = position.add(right.multiply(panX)).add(up.multiply(panY));
     }
     
     /**
@@ -171,20 +189,33 @@ export class OrbitControls {
      * @param deltaY Change in wheel position
      */
     private handleMouseWheel(deltaY: number): void {
-        // Make zoom speed proportional to current distance for more natural zooming
-        const zoomFactor = Math.max(0.05, this.camera.orbitRadius * 0.01);
+        // Get camera's projection type
+        const isOrthographic = this.camera.projectionType === ProjectionType.Orthographic;
         
-        // Update orbit radius (zoom)
-        this.camera.orbitRadius += deltaY * this.zoomSpeed * zoomFactor;
-        
-        // Clamp distance
-        this.camera.orbitRadius = Math.max(
-            this.minDistance,
-            Math.min(this.maxDistance, this.camera.orbitRadius)
-        );
-        
-        // Update camera position
-        this.camera.updateFromOrbit();
+        if (isOrthographic) {
+            // For orthographic projection, adjust the orthoSize
+            const zoomFactor = Math.max(0.05, this.camera.orthoSize * 0.01);
+            this.camera.orthoSize += deltaY * this.zoomSpeed * zoomFactor;
+            
+            // Clamp orthoSize to reasonable values
+            this.camera.orthoSize = Math.max(0.1, Math.min(20, this.camera.orthoSize));
+        } else {
+            // For perspective projection, adjust the orbit radius
+            // Make zoom speed proportional to current distance for more natural zooming
+            const zoomFactor = Math.max(0.05, this.camera.orbitRadius * 0.01);
+            
+            // Update orbit radius (zoom)
+            this.camera.orbitRadius += deltaY * this.zoomSpeed * zoomFactor;
+            
+            // Clamp distance
+            this.camera.orbitRadius = Math.max(
+                this.minDistance,
+                Math.min(this.maxDistance, this.camera.orbitRadius)
+            );
+            
+            // Update camera position
+            this.camera.updateFromOrbit();
+        }
     }
     
     /**
