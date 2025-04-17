@@ -3,81 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D to 2D Projection Demo</title>
+    <title>Interactive 3D to 2D Projection Demo</title>
     <style>
         body {
             margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            padding: 20px;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        #container {
-            text-align: center;
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1000px;
+            width: 100%;
         }
+        
         h1 {
-            margin-bottom: 20px;
+            text-align: center;
             color: #333;
+            margin-bottom: 20px;
         }
+        
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
         canvas {
             background-color: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        #math-explanation {
-            max-width: 800px;
+            display: block;
             margin: 0 auto;
+            border: 1px solid #ddd;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            background-color: white;
             padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .control-row label {
+            width: 80px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+        }
+        
+        .value-display {
+            width: 40px;
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        .instructions {
+            background-color: #e9f7fe;
+            border-left: 4px solid #4dabf7;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #0078d7;
+        }
+        
+        .instructions ul {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+        
+        #math-explanation {
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
             text-align: left;
         }
-
+        
         #math-explanation h2 {
             color: #333;
             border-bottom: 1px solid #eee;
             padding-bottom: 10px;
         }
-
+        
         #math-explanation h3 {
             color: #444;
             margin-top: 20px;
         }
-
+        
         #math-explanation p, #math-explanation ol {
             line-height: 1.6;
             color: #555;
         }
+        
+        .matrix-display {
+            font-family: monospace;
+            white-space: pre;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
-    <div id="container">
-        <h1>3D to 2D Projection Demo</h1>
-        <canvas id="projectionCanvas"></canvas>
+    <div class="container">
+        <h1>Interactive 3D to 2D Projection Demo</h1>
+        
+        <div class="instructions">
+            <h3>Interaction Guide</h3>
+            <ul>
+                <li><strong>Mouse Drag:</strong> Rotate the 3D object</li>
+                <li><strong>Mouse Wheel:</strong> Zoom in/out</li>
+                <li><strong>Controls Below:</strong> Adjust camera and projection parameters</li>
+            </ul>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="projectionCanvas" width="800" height="500"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Camera Position</h3>
+                <div class="control-row">
+                    <label for="camera-x">X:</label>
+                    <input type="range" id="camera-x" min="-10" max="10" step="0.5" value="3">
+                    <span class="value-display" id="camera-x-value">3.0</span>
+                </div>
+                <div class="control-row">
+                    <label for="camera-y">Y:</label>
+                    <input type="range" id="camera-y" min="-10" max="10" step="0.5" value="3">
+                    <span class="value-display" id="camera-y-value">3.0</span>
+                </div>
+                <div class="control-row">
+                    <label for="camera-z">Z:</label>
+                    <input type="range" id="camera-z" min="-10" max="10" step="0.5" value="3">
+                    <span class="value-display" id="camera-z-value">3.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Projection</h3>
+                <div class="control-row">
+                    <label for="projectionMode">Mode:</label>
+                    <select id="projectionMode">
+                        <option value="perspective">Perspective</option>
+                        <option value="orthographic">Orthographic (Isometric)</option>
+                    </select>
+                </div>
+                
+                <!-- Perspective projection controls -->
+                <div id="perspectiveControls">
+                    <div class="control-row">
+                        <label for="fov">FOV:</label>
+                        <input type="range" id="fov" min="30" max="120" step="1" value="75">
+                        <span class="value-display" id="fov-value">75°</span>
+                    </div>
+                    <div class="control-row">
+                        <label for="near">Near:</label>
+                        <input type="range" id="near" min="0.1" max="5" step="0.1" value="0.1">
+                        <span class="value-display" id="near-value">0.1</span>
+                    </div>
+                    <div class="control-row">
+                        <label for="far">Far:</label>
+                        <input type="range" id="far" min="5" max="100" step="1" value="100">
+                        <span class="value-display" id="far-value">100</span>
+                    </div>
+                </div>
+                
+                <!-- Orthographic projection controls -->
+                <div id="orthographicControls" style="display: none;">
+                    <div class="control-row">
+                        <label for="orthoSize">Size:</label>
+                        <input type="range" id="orthoSize" min="1" max="10" step="0.5" value="5">
+                        <span class="value-display" id="orthoSize-value">5.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Object</h3>
+                <div class="control-row">
+                    <label for="shape">Shape:</label>
+                    <select id="shape">
+                        <option value="cube">Cube</option>
+                        <option value="pyramid">Pyramid</option>
+                        <option value="octahedron">Octahedron</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <label for="autoRotate">Auto-rotate:</label>
+                    <input type="checkbox" id="autoRotate" checked>
+                </div>
+            </div>
+        </div>
         
         <div id="math-explanation">
             <h2>3D to 2D Projection Math</h2>
-            <h3>1. Vector Operations</h3>
-            <p>• Dot product: a·b = a<sub>x</sub>b<sub>x</sub> + a<sub>y</sub>b<sub>y</sub> + a<sub>z</sub>b<sub>z</sub></p>
-            <p>• Cross product: a×b = (a<sub>y</sub>b<sub>z</sub>-a<sub>z</sub>b<sub>y</sub>, a<sub>z</sub>b<sub>x</sub>-a<sub>x</sub>b<sub>z</sub>, a<sub>x</sub>b<sub>y</sub>-a<sub>y</sub>b<sub>x</sub>)</p>
             
-            <h3>2. View Matrix (LookAt)</h3>
-            <p>Constructed from:</p>
-            <p>• Forward vector (z): Normalized(eye - target)</p>
-            <p>• Right vector (x): Normalized(up × z)</p>
-            <p>• Up vector (y): z × x</p>
+            <h3>Current View Matrix</h3>
+            <div id="view-matrix" class="matrix-display">Loading...</div>
             
-            <h3>3. Projection Matrix</h3>
-            <p>Perspective projection with:</p>
-            <p>• Field of View: 75°</p>
-            <p>• Aspect Ratio: canvas width/height</p>
-            <p>• Near/Far planes: 0.1 to 100 units</p>
+            <h3>Current Projection Matrix</h3>
+            <div id="proj-matrix" class="matrix-display">Loading...</div>
             
-            <h3>4. Projection Pipeline</h3>
+            <h3>Projection Pipeline</h3>
             <ol>
                 <li>Model → World space (modelMatrix)</li>
                 <li>World → Camera space (viewMatrix)</li>
@@ -85,13 +258,167 @@
                 <li>Perspective divide → NDC [-1,1]³</li>
                 <li>NDC → Screen coordinates</li>
             </ol>
+            
+            <h3>Vector Operations</h3>
+            <p>• Dot product: a·b = a<sub>x</sub>b<sub>x</sub> + a<sub>y</sub>b<sub>y</sub> + a<sub>z</sub>b<sub>z</sub></p>
+            <p>• Cross product: a×b = (a<sub>y</sub>b<sub>z</sub>-a<sub>z</sub>b<sub>y</sub>, a<sub>z</sub>b<sub>x</sub>-a<sub>x</sub>b<sub>z</sub>, a<sub>x</sub>b<sub>y</sub>-a<sub>y</sub>b<sub>x</sub>)</p>
         </div>
     </div>
 
     <script src="3d-to-2d-projection-math.js"></script>
     <script>
-        // This will use the code from the included JS file
-        // The demo is already set up there with canvas creation and drawing
+        // Initialize the renderer
+        let renderer;
+        
+        // Format matrix for display
+        function formatMatrix(matrix) {
+            const elements = matrix.elements;
+            let result = "";
+            
+            for (let i = 0; i < 4; i++) {
+                result += "| ";
+                for (let j = 0; j < 4; j++) {
+                    // Format each element to 2 decimal places
+                    const value = elements[j * 4 + i].toFixed(2);
+                    // Pad with spaces for alignment
+                    result += value.padStart(7) + " ";
+                }
+                result += "|\n";
+            }
+            
+            return result;
+        }
+        
+        // Update matrix displays
+        function updateMatrixDisplays() {
+            let viewMatrix, projMatrix;
+            
+            if (renderer.isOrthographic) {
+                // For orthographic/isometric view
+                viewMatrix = Matrix4.isometric();
+                
+                // Create orthographic projection
+                const size = renderer.orthoSize;
+                const aspect = renderer.aspect;
+                projMatrix = Matrix4.orthographic(
+                    -size * aspect, size * aspect,  // left, right
+                    -size, size,                    // bottom, top
+                    -100, 100                       // near, far (large range for visibility)
+                );
+            } else {
+                // For perspective view
+                viewMatrix = Matrix4.lookAt(
+                    renderer.cameraPosition,
+                    renderer.cameraTarget,
+                    renderer.cameraUp
+                );
+                
+                projMatrix = Matrix4.perspective(
+                    renderer.fov,
+                    renderer.aspect,
+                    renderer.near,
+                    renderer.far
+                );
+            }
+            
+            // Update displays
+            document.getElementById('view-matrix').textContent = formatMatrix(viewMatrix);
+            document.getElementById('proj-matrix').textContent = formatMatrix(projMatrix);
+        }
+        
+        // Initialize when the page loads
+        window.addEventListener('load', () => {
+            // Create renderer
+            renderer = new Renderer3D('projectionCanvas');
+            
+            // Set up control event listeners
+            document.getElementById('camera-x').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('camera-x-value').textContent = value.toFixed(1);
+                renderer.cameraPosition.x = value;
+                updateMatrixDisplays();
+            });
+            
+            document.getElementById('camera-y').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('camera-y-value').textContent = value.toFixed(1);
+                renderer.cameraPosition.y = value;
+                updateMatrixDisplays();
+            });
+            
+            document.getElementById('camera-z').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('camera-z-value').textContent = value.toFixed(1);
+                renderer.cameraPosition.z = value;
+                updateMatrixDisplays();
+            });
+            
+            // Projection mode toggle
+            document.getElementById('projectionMode').addEventListener('change', (e) => {
+                const isOrthographic = e.target.value === 'orthographic';
+                renderer.toggleProjectionMode(isOrthographic);
+                
+                // Show/hide appropriate controls
+                document.getElementById('perspectiveControls').style.display = 
+                    isOrthographic ? 'none' : 'block';
+                document.getElementById('orthographicControls').style.display = 
+                    isOrthographic ? 'block' : 'none';
+                
+                updateMatrixDisplays();
+            });
+            
+            // Perspective controls
+            document.getElementById('fov').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('fov-value').textContent = value + '°';
+                renderer.fov = value;
+                updateMatrixDisplays();
+            });
+            
+            document.getElementById('near').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('near-value').textContent = value.toFixed(1);
+                renderer.near = value;
+                updateMatrixDisplays();
+            });
+            
+            document.getElementById('far').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('far-value').textContent = value;
+                renderer.far = value;
+                updateMatrixDisplays();
+            });
+            
+            // Orthographic controls
+            document.getElementById('orthoSize').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('orthoSize-value').textContent = value.toFixed(1);
+                renderer.setOrthoSize(value);
+                updateMatrixDisplays();
+            });
+            
+            document.getElementById('shape').addEventListener('change', (e) => {
+                renderer.setShape(e.target.value);
+            });
+            
+            document.getElementById('autoRotate').addEventListener('change', (e) => {
+                renderer.toggleAutoRotate(e.target.checked);
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                // Only resize if the canvas is full-width
+                if (renderer.canvas.width === window.innerWidth) {
+                    renderer.resize(window.innerWidth, window.innerHeight * 0.6);
+                }
+            });
+            
+            // Initial matrix display update
+            updateMatrixDisplays();
+            
+            // Start the renderer
+            renderer.start();
+        });
     </script>
 </body>
 </html>

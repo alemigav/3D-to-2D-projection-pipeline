@@ -1,0 +1,9 @@
+This is a placeholder for the screenshot.png file.
+
+In a real implementation, you would replace this text file with an actual PNG screenshot of the 3D to 2D projection visualization in action, showing the interactive interface with the 3D object, controls, and matrix displays.
+
+To create a screenshot:
+1. Open the 3d-projection-demo.html in a browser
+2. Interact with the visualization to get a good view
+3. Take a screenshot (using your operating system's screenshot tool)
+4. Save it as "screenshot.png" in the same directory as the README.md file
