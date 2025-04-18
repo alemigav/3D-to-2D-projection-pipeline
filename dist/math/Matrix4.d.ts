@@ -127,6 +127,15 @@ export declare class Matrix4 {
      */
     toFloat32Array(): Float32Array;
     /**
+     * Extract the translation component from this matrix
+     */
+    getTranslation(): Vector3;
+    /**
+     * Transform a direction vector by this matrix (ignoring translation)
+     * @param v Direction vector to transform
+     */
+    transformDirection(v: Vector3): Vector3;
+    /**
      * Convert this matrix to a string representation
      */
     toString(): string;

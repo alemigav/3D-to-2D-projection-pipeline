@@ -15,14 +15,20 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize the WebGL application
         const app = new WebGLApp('webgl-canvas');
         
-        // Create and add coordinate axes
-        const axes = Mesh.createCoordinateAxes(2.0);
-        app.getScene().addNode(axes);
+        // Create and add global coordinate axes
+        const globalAxes = Mesh.createCoordinateAxes(2.0);
+        globalAxes.name = 'global_axes';
+        app.getScene().addNode(globalAxes);
         
         // Create initial shape (wireframe cube)
         let currentShape = Mesh.createWireframeCube(1.0, new Vector3(0, 0, 0));
         currentShape.name = 'current_shape';
         app.getScene().addNode(currentShape);
+        
+        // Create and add local gimbal axes for the shape
+        const localAxes = Mesh.createGimbalAxes(0.5);
+        localAxes.name = 'local_axes';
+        currentShape.addChild(localAxes); // Attach to the shape as a child
         
         // Set up shape selection handler
         const shapeSelect = document.getElementById('shape') as HTMLSelectElement;
@@ -69,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add new shape to scene
                 newShape.name = 'current_shape';
                 app.getScene().addNode(newShape);
+                
+                // Create and add local gimbal axes for the new shape
+                const localAxes = Mesh.createGimbalAxes(0.5);
+                localAxes.name = 'local_axes';
+                newShape.addChild(localAxes); // Attach to the shape as a child
+                
                 currentShape = newShape;
             };
             

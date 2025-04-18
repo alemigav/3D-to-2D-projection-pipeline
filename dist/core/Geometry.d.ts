@@ -102,6 +102,12 @@ export declare class Geometry {
      */
     static createCoordinateAxes(size?: number): Geometry;
     /**
+     * Create coordinate axes geometry with arrow heads (gimbals)
+     * @param size Size of the axes
+     * @param arrowSize Size of the arrow heads
+     */
+    static createGimbalAxes(size?: number, arrowSize?: number): Geometry;
+    /**
      * Create a pyramid geometry
      * @param size Base size of the pyramid
      * @param height Height of the pyramid

@@ -105,4 +105,9 @@ export declare class Vector3 {
      * @param b Second vector
      */
     static cross(a: Vector3, b: Vector3): Vector3;
+    /**
+     * Transform this vector as a direction by a matrix
+     * @param matrix Matrix to transform by
+     */
+    transformDirection(matrix: any): Vector3;
 }

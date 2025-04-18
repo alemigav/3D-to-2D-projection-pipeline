@@ -189,6 +189,11 @@ export class SelectionManager {
      * @param node Node to select
      */
     selectNode(node: SceneNode): void {
+        // If we're selecting the same node, do nothing
+        if (this.selectedNode === node) {
+            return;
+        }
+        
         // If we already have a selection, deselect it first
         if (this.selectedNode) {
             this.clearSelection();

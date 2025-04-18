@@ -213,7 +213,27 @@ This section will track progress and updates as the implementation proceeds.
 - Added CSS styling for interaction controls
 - Updated HTML structure to support new interaction UI elements
 
-### Update 8: Educational Features (Upcoming)
+### Update 8: Gimbal Axes Implementation (Completed)
+- Added coordinate axes with arrow heads (gimbals) for each object
+- Implemented axis-constrained object manipulation using gimbal axes
+- Added color-coded axes (red for X, green for Y, blue for Z)
+- Created a new interaction mode for gimbal control
+- Updated UI to display the current interaction mode (Camera, Object, or Gimbal)
+- Implemented ray-based detection for gimbal axis selection
+- Added visual feedback for the selected axis during manipulation
+- Enhanced the toggle mode cycle to include gimbal control mode
+- Updated Matrix4 and Vector3 classes with direction transformation methods
+- Improved shader support for vertex colors to render colored axes
+
+### Update 9: Gimbal Visibility Toggle (Completed)
+- Added a toggle to show/hide gimbal axes for cleaner visualization
+- Implemented proper parent-child relationship between objects and their gimbal axes
+- Fixed gimbal control to properly move the parent object
+- Improved shader to correctly handle colored axes while keeping wireframes black
+- Enhanced the gimbal movement calculation for more intuitive control
+- Added support for camera-distance-based movement scaling
+
+### Update 10: Educational Features (Upcoming)
 - Create matrix displays for educational purposes
 - Implement UI controls for manipulating 3D objects
 - Add support for solid rendering with lighting

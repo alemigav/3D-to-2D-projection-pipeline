@@ -213,4 +213,28 @@ export class Vector3 {
             a.x * b.y - a.y * b.x
         );
     }
+    
+    /**
+     * Transform this vector as a direction by a matrix
+     * @param matrix Matrix to transform by
+     */
+    transformDirection(matrix: any): Vector3 {
+        // Check if the matrix has a transformDirection method
+        if (matrix.transformDirection) {
+            return matrix.transformDirection(this);
+        }
+        
+        // Fallback implementation
+        const e = matrix.elements;
+        const x = this.x;
+        const y = this.y;
+        const z = this.z;
+        
+        // Calculate transformed direction (ignoring translation)
+        const tx = e[0] * x + e[4] * y + e[8] * z;
+        const ty = e[1] * x + e[5] * y + e[9] * z;
+        const tz = e[2] * x + e[6] * y + e[10] * z;
+        
+        return new Vector3(tx, ty, tz);
+    }
 }

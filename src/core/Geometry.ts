@@ -437,6 +437,165 @@ export class Geometry {
         
         return geometry;
     }
+    
+    /**
+     * Create coordinate axes geometry with arrow heads (gimbals)
+     * @param size Size of the axes
+     * @param arrowSize Size of the arrow heads
+     */
+    static createGimbalAxes(size: number = 1, arrowSize: number = 0.1): Geometry {
+        const geometry = new Geometry('gimbal_axes');
+        
+        // Arrow head cone segments
+        const segments = 8;
+        const arrowLength = size * 0.15; // 15% of axis length
+        const arrowRadius = size * 0.05; // 5% of axis length
+        
+        // Calculate number of vertices and indices
+        // For each axis: 
+        // - 1 line (2 vertices)
+        // - 1 cone (segments + 1 vertices, segments * 3 indices)
+        const vertexCount = 2 * 3 + (segments + 1) * 3;
+        const positions = new Float32Array(vertexCount * 3);
+        const colors = new Float32Array(vertexCount * 3);
+        
+        // Calculate number of indices
+        // For each axis:
+        // - 1 line (2 indices)
+        // - 1 cone (segments * 3 indices)
+        const indexCount = 2 * 3 + segments * 3 * 3;
+        const indices = new Uint16Array(indexCount);
+        
+        let vertexOffset = 0;
+        let indexOffset = 0;
+        
+        // Create axes lines
+        // X axis (red)
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 1; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        positions[vertexOffset] = size - arrowLength; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 1; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        // Y axis (green)
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 1; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = size - arrowLength; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 1; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        // Z axis (blue)
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 1;
+        vertexOffset += 3;
+        
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = size - arrowLength;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 1;
+        vertexOffset += 3;
+        
+        // Set indices for lines
+        indices[indexOffset++] = 0; indices[indexOffset++] = 1; // X axis
+        indices[indexOffset++] = 2; indices[indexOffset++] = 3; // Y axis
+        indices[indexOffset++] = 4; indices[indexOffset++] = 5; // Z axis
+        
+        // Create arrow heads (cones)
+        // X axis arrow (red)
+        const xArrowBaseIndex = vertexOffset / 3;
+        const xArrowTipIndex = xArrowBaseIndex;
+        
+        // Arrow tip
+        positions[vertexOffset] = size; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 1; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        // Arrow base vertices (circle)
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const x = size - arrowLength;
+            const y = Math.sin(angle) * arrowRadius;
+            const z = Math.cos(angle) * arrowRadius;
+            
+            positions[vertexOffset] = x; positions[vertexOffset + 1] = y; positions[vertexOffset + 2] = z;
+            colors[vertexOffset] = 1; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 0;
+            vertexOffset += 3;
+        }
+        
+        // X axis arrow indices (triangles)
+        for (let i = 0; i < segments; i++) {
+            const nextI = (i + 1) % segments;
+            indices[indexOffset++] = xArrowTipIndex;
+            indices[indexOffset++] = xArrowBaseIndex + 1 + i;
+            indices[indexOffset++] = xArrowBaseIndex + 1 + nextI;
+        }
+        
+        // Y axis arrow (green)
+        const yArrowBaseIndex = vertexOffset / 3;
+        const yArrowTipIndex = yArrowBaseIndex;
+        
+        // Arrow tip
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = size; positions[vertexOffset + 2] = 0;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 1; colors[vertexOffset + 2] = 0;
+        vertexOffset += 3;
+        
+        // Arrow base vertices (circle)
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const x = Math.sin(angle) * arrowRadius;
+            const y = size - arrowLength;
+            const z = Math.cos(angle) * arrowRadius;
+            
+            positions[vertexOffset] = x; positions[vertexOffset + 1] = y; positions[vertexOffset + 2] = z;
+            colors[vertexOffset] = 0; colors[vertexOffset + 1] = 1; colors[vertexOffset + 2] = 0;
+            vertexOffset += 3;
+        }
+        
+        // Y axis arrow indices (triangles)
+        for (let i = 0; i < segments; i++) {
+            const nextI = (i + 1) % segments;
+            indices[indexOffset++] = yArrowTipIndex;
+            indices[indexOffset++] = yArrowBaseIndex + 1 + i;
+            indices[indexOffset++] = yArrowBaseIndex + 1 + nextI;
+        }
+        
+        // Z axis arrow (blue)
+        const zArrowBaseIndex = vertexOffset / 3;
+        const zArrowTipIndex = zArrowBaseIndex;
+        
+        // Arrow tip
+        positions[vertexOffset] = 0; positions[vertexOffset + 1] = 0; positions[vertexOffset + 2] = size;
+        colors[vertexOffset] = 0; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 1;
+        vertexOffset += 3;
+        
+        // Arrow base vertices (circle)
+        for (let i = 0; i < segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const x = Math.sin(angle) * arrowRadius;
+            const y = Math.cos(angle) * arrowRadius;
+            const z = size - arrowLength;
+            
+            positions[vertexOffset] = x; positions[vertexOffset + 1] = y; positions[vertexOffset + 2] = z;
+            colors[vertexOffset] = 0; colors[vertexOffset + 1] = 0; colors[vertexOffset + 2] = 1;
+            vertexOffset += 3;
+        }
+        
+        // Z axis arrow indices (triangles)
+        for (let i = 0; i < segments; i++) {
+            const nextI = (i + 1) % segments;
+            indices[indexOffset++] = zArrowTipIndex;
+            indices[indexOffset++] = zArrowBaseIndex + 1 + i;
+            indices[indexOffset++] = zArrowBaseIndex + 1 + nextI;
+        }
+        
+        geometry.setPositions(positions);
+        geometry.setColors(colors);
+        geometry.setIndices(indices);
+        
+        return geometry;
+    }
 
     /**
      * Create a pyramid geometry

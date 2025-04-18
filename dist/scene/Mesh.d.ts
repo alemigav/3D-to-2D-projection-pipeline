@@ -21,13 +21,24 @@ export declare class Mesh extends SceneNode {
     private geometry;
     private material;
     private isUploaded;
+    private localAxes;
     /**
      * Create a new Mesh
      * @param geometry Geometry to use
      * @param material Material to use
      * @param name Optional name for the mesh
+     * @param createGimbal Whether to create gimbal axes for this mesh
      */
-    constructor(geometry: Geometry, material: Material, name?: string);
+    constructor(geometry: Geometry, material: Material, name?: string, createGimbal?: boolean);
+    /**
+     * Create local axes (gimbal) for this mesh
+     */
+    private createLocalAxes;
+    /**
+     * Set the visibility of the local axes (gimbal)
+     * @param visible Whether the local axes should be visible
+     */
+    setLocalAxesVisibility(visible: boolean): void;
     /**
      * Get the geometry
      */
@@ -68,6 +79,12 @@ export declare class Mesh extends SceneNode {
      * @param size Size of the axes
      */
     static createCoordinateAxes(size?: number): Mesh;
+    /**
+     * Create gimbal axes mesh with arrow heads
+     * @param size Size of the axes
+     * @param arrowSize Size of the arrow heads
+     */
+    static createGimbalAxes(size?: number, arrowSize?: number): Mesh;
     /**
      * Create a wireframe pyramid mesh
      * @param size Base size of the pyramid

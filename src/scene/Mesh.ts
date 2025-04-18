@@ -25,16 +25,47 @@ export class Mesh extends SceneNode {
     private material: Material;
     private isUploaded: boolean = false;
     
+    // Local axes (gimbal) for manipulation
+    private localAxes: Mesh | null = null;
+    
     /**
      * Create a new Mesh
      * @param geometry Geometry to use
      * @param material Material to use
      * @param name Optional name for the mesh
+     * @param createGimbal Whether to create gimbal axes for this mesh
      */
-    constructor(geometry: Geometry, material: Material, name: string = '') {
+    constructor(geometry: Geometry, material: Material, name: string = '', createGimbal: boolean = true) {
         super(name || geometry.name);
         this.geometry = geometry;
         this.material = material;
+        
+        // Create local axes (gimbal) for manipulation
+        if (createGimbal) {
+            this.createLocalAxes();
+        }
+    }
+    
+    /**
+     * Create local axes (gimbal) for this mesh
+     */
+    private createLocalAxes(): void {
+        // Create gimbal axes mesh
+        this.localAxes = Mesh.createGimbalAxes(0.5);
+        this.localAxes.name = 'local_axes';
+        
+        // Add as child
+        this.addChild(this.localAxes);
+    }
+    
+    /**
+     * Set the visibility of the local axes (gimbal)
+     * @param visible Whether the local axes should be visible
+     */
+    setLocalAxesVisibility(visible: boolean): void {
+        if (this.localAxes) {
+            this.localAxes.visible = visible;
+        }
     }
     
     /**
@@ -124,7 +155,7 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'wireframe_cube');
+        return new Mesh(geometry, material, 'wireframe_cube', true);
     }
     
     /**
@@ -139,7 +170,7 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'cube');
+        return new Mesh(geometry, material, 'cube', true);
     }
     
     /**
@@ -153,7 +184,24 @@ export class Mesh extends SceneNode {
             color: new Vector3(1, 1, 1) // This will be overridden by vertex colors
         };
         
-        return new Mesh(geometry, material, 'coordinate_axes');
+        // Pass createGimbal=false to prevent infinite recursion
+        return new Mesh(geometry, material, 'coordinate_axes', false);
+    }
+    
+    /**
+     * Create gimbal axes mesh with arrow heads
+     * @param size Size of the axes
+     * @param arrowSize Size of the arrow heads
+     */
+    static createGimbalAxes(size: number = 1, arrowSize: number = 0.1): Mesh {
+        const geometry = Geometry.createGimbalAxes(size, arrowSize);
+        const material: Material = {
+            type: MaterialType.Basic, // Use basic material to render triangles
+            color: new Vector3(1, 1, 1) // This will be overridden by vertex colors
+        };
+        
+        // Pass createGimbal=false to prevent infinite recursion
+        return new Mesh(geometry, material, 'gimbal_axes', false);
     }
     
     /**
@@ -173,7 +221,7 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'wireframe_pyramid');
+        return new Mesh(geometry, material, 'wireframe_pyramid', true);
     }
     
     /**
@@ -193,7 +241,7 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'pyramid');
+        return new Mesh(geometry, material, 'pyramid', true);
     }
     
     /**
@@ -211,7 +259,7 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'wireframe_octahedron');
+        return new Mesh(geometry, material, 'wireframe_octahedron', true);
     }
     
     /**
@@ -229,6 +277,6 @@ export class Mesh extends SceneNode {
             color: color
         };
         
-        return new Mesh(geometry, material, 'octahedron');
+        return new Mesh(geometry, material, 'octahedron', true);
     }
 }

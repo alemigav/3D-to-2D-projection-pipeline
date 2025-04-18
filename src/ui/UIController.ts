@@ -306,6 +306,27 @@ export class UIController {
             });
             interactionControls.appendChild(toggleButton);
             
+            // Create gimbal visibility toggle
+            const gimbalToggleContainer = document.createElement('div');
+            gimbalToggleContainer.className = 'control-row';
+            
+            const gimbalToggleLabel = document.createElement('label');
+            gimbalToggleLabel.htmlFor = 'toggleGimbalVisibility';
+            gimbalToggleLabel.textContent = 'Show Gimbal Axes:';
+            gimbalToggleContainer.appendChild(gimbalToggleLabel);
+            
+            const gimbalToggleCheckbox = document.createElement('input');
+            gimbalToggleCheckbox.type = 'checkbox';
+            gimbalToggleCheckbox.id = 'toggleGimbalVisibility';
+            gimbalToggleCheckbox.checked = true; // Default to visible
+            gimbalToggleCheckbox.addEventListener('change', () => {
+                const interactionController = this.app.getInteractionController();
+                interactionController.setGimbalVisibility(gimbalToggleCheckbox.checked);
+            });
+            gimbalToggleContainer.appendChild(gimbalToggleCheckbox);
+            
+            interactionControls.appendChild(gimbalToggleContainer);
+            
             // Create selection info
             const selectionInfo = document.createElement('div');
             selectionInfo.id = 'selectionInfo';
@@ -363,15 +384,29 @@ export class UIController {
         
         if (modeDisplay) {
             const mode = interactionController.getMode();
-            const modeText = mode === InteractionMode.CameraControl ? 'Camera Control' : 'Object Control';
-            modeDisplay.textContent = modeText;
+            let modeText = 'Camera Control';
+            let modeColor = '#2196F3'; // Blue for camera
             
-            // Update color based on mode
-            if (mode === InteractionMode.CameraControl) {
-                modeDisplay.style.color = '#2196F3'; // Blue for camera
-            } else {
-                modeDisplay.style.color = '#FF9800'; // Orange for object
+            // Set mode text and color based on current mode
+            switch (mode) {
+                case InteractionMode.CameraControl:
+                    modeText = 'Camera Control';
+                    modeColor = '#2196F3'; // Blue for camera
+                    break;
+                    
+                case InteractionMode.ObjectControl:
+                    modeText = 'Object Control';
+                    modeColor = '#FF9800'; // Orange for object
+                    break;
+                    
+                case InteractionMode.GimbalControl:
+                    modeText = 'Gimbal Control';
+                    modeColor = '#E91E63'; // Pink for gimbal
+                    break;
             }
+            
+            modeDisplay.textContent = modeText;
+            modeDisplay.style.color = modeColor;
         }
         
         if (toggleButton) {

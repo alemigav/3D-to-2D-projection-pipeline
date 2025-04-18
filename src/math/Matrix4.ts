@@ -450,6 +450,32 @@ export class Matrix4 {
     }
 
     /**
+     * Extract the translation component from this matrix
+     */
+    getTranslation(): Vector3 {
+        const e = this.elements;
+        return new Vector3(e[12], e[13], e[14]);
+    }
+    
+    /**
+     * Transform a direction vector by this matrix (ignoring translation)
+     * @param v Direction vector to transform
+     */
+    transformDirection(v: Vector3): Vector3 {
+        const e = this.elements;
+        const x = v.x;
+        const y = v.y;
+        const z = v.z;
+        
+        // Calculate transformed direction (ignoring translation)
+        const tx = e[0] * x + e[4] * y + e[8] * z;
+        const ty = e[1] * x + e[5] * y + e[9] * z;
+        const tz = e[2] * x + e[6] * y + e[10] * z;
+        
+        return new Vector3(tx, ty, tz);
+    }
+    
+    /**
      * Convert this matrix to a string representation
      */
     toString(): string {

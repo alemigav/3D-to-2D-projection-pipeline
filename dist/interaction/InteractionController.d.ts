@@ -10,7 +10,17 @@ import { SelectionManager } from './SelectionManager';
  */
 export declare enum InteractionMode {
     CameraControl = 0,// Control the camera (default)
-    ObjectControl = 1
+    ObjectControl = 1,// Control the selected object
+    GimbalControl = 2
+}
+/**
+ * Gimbal axis types
+ */
+export declare enum GimbalAxis {
+    None = 0,
+    X = 1,
+    Y = 2,
+    Z = 3
 }
 export declare class InteractionController {
     private camera;
@@ -22,6 +32,8 @@ export declare class InteractionController {
     private lastMouseX;
     private lastMouseY;
     private mouseButton;
+    private activeGimbalAxis;
+    private gimbalDragPlane;
     private rotationSpeed;
     private zoomSpeed;
     private panSpeed;
@@ -48,6 +60,12 @@ export declare class InteractionController {
      * @param deltaY Change in Y position
      */
     private handleMouseMove;
+    /**
+     * Handle gimbal axis control
+     * @param deltaX Change in X position
+     * @param deltaY Change in Y position
+     */
+    private handleGimbalControl;
     /**
      * Handle camera control
      * @param deltaX Change in X position
@@ -87,7 +105,7 @@ export declare class InteractionController {
      */
     setMode(mode: InteractionMode): void;
     /**
-     * Toggle between camera and object control modes
+     * Toggle between camera, object, and gimbal control modes
      */
     toggleMode(): void;
     /**
@@ -126,6 +144,38 @@ export declare class InteractionController {
      * @param callback Callback function
      */
     setOnModeChange(callback: (mode: InteractionMode) => void): void;
+    /**
+     * Detect if a gimbal axis was clicked
+     * @param ndcX X coordinate in normalized device coordinates (-1 to 1)
+     * @param ndcY Y coordinate in normalized device coordinates (-1 to 1)
+     */
+    private detectGimbalAxisClick;
+    /**
+     * Calculate the distance from a ray to a line
+     * @param ray Ray (origin and direction)
+     * @param linePoint Point on the line
+     * @param lineDirection Direction of the line
+     * @returns Distance from ray to line
+     */
+    private distanceFromRayToLine;
+    /**
+     * Set up the drag plane for gimbal axis movement
+     * @param axis Gimbal axis
+     * @param objectPosition Object position
+     */
+    private setupGimbalDragPlane;
+    /**
+     * Create a ray from the camera through a point in normalized device coordinates
+     * @param ndcX X coordinate in normalized device coordinates (-1 to 1)
+     * @param ndcY Y coordinate in normalized device coordinates (-1 to 1)
+     * @returns Ray origin and direction
+     */
+    private createRayFromCamera;
+    /**
+     * Set the visibility of gimbal axes
+     * @param visible Whether the gimbal axes should be visible
+     */
+    setGimbalVisibility(visible: boolean): void;
     /**
      * Update the controller
      * This should be called once per frame

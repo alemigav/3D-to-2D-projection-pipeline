@@ -14,7 +14,18 @@ import { SelectionManager } from './SelectionManager';
  */
 export enum InteractionMode {
     CameraControl,  // Control the camera (default)
-    ObjectControl   // Control the selected object
+    ObjectControl,  // Control the selected object
+    GimbalControl   // Control the object using gimbal axes
+}
+
+/**
+ * Gimbal axis types
+ */
+export enum GimbalAxis {
+    None,
+    X,
+    Y,
+    Z
 }
 
 export class InteractionController {
@@ -29,6 +40,10 @@ export class InteractionController {
     private lastMouseX: number = 0;
     private lastMouseY: number = 0;
     private mouseButton: number = 0;
+    
+    // Gimbal control state
+    private activeGimbalAxis: GimbalAxis = GimbalAxis.None;
+    private gimbalDragPlane: { normal: Vector3, point: Vector3 } | null = null;
     
     // Control settings
     private rotationSpeed: number = 0.01;
@@ -72,6 +87,16 @@ export class InteractionController {
             this.lastMouseX = event.clientX;
             this.lastMouseY = event.clientY;
             
+            // Check if we clicked on a gimbal axis
+            if (event.button === 0) { // Left mouse button
+                const rect = this.canvas.getBoundingClientRect();
+                const x = ((event.clientX - rect.left) / this.canvas.width) * 2 - 1;
+                const y = -((event.clientY - rect.top) / this.canvas.height) * 2 + 1;
+                
+                // Try to detect gimbal axis click
+                this.detectGimbalAxisClick(x, y);
+            }
+            
             // Prevent default behavior (e.g., text selection)
             event.preventDefault();
         });
@@ -95,11 +120,33 @@ export class InteractionController {
         // Mouse up event
         window.addEventListener('mouseup', () => {
             this.isMouseDown = false;
+            
+            // Reset gimbal axis when mouse is released
+            if (this.activeGimbalAxis !== GimbalAxis.None) {
+                this.activeGimbalAxis = GimbalAxis.None;
+                this.gimbalDragPlane = null;
+                
+                // Update UI to show the current mode
+                if (this.onModeChange) {
+                    this.onModeChange(this.mode);
+                }
+            }
         });
         
         // Mouse leave event
         window.addEventListener('mouseleave', () => {
             this.isMouseDown = false;
+            
+            // Reset gimbal axis when mouse leaves window
+            if (this.activeGimbalAxis !== GimbalAxis.None) {
+                this.activeGimbalAxis = GimbalAxis.None;
+                this.gimbalDragPlane = null;
+                
+                // Update UI to show the current mode
+                if (this.onModeChange) {
+                    this.onModeChange(this.mode);
+                }
+            }
         });
         
         // Mouse wheel event
@@ -143,8 +190,10 @@ export class InteractionController {
         
         // Listen for selection changes
         this.canvas.addEventListener('object-selected', ((event: Event) => {
-            // Switch to object control mode when an object is selected
-            this.setMode(InteractionMode.ObjectControl);
+            // Only switch to object control mode if not already in gimbal control mode
+            if (this.mode !== InteractionMode.GimbalControl) {
+                this.setMode(InteractionMode.ObjectControl);
+            }
         }) as EventListener);
         
         this.canvas.addEventListener('object-deselected', (() => {
@@ -174,11 +223,107 @@ export class InteractionController {
      * @param deltaY Change in Y position
      */
     private handleMouseMove(deltaX: number, deltaY: number): void {
-        if (this.mode === InteractionMode.CameraControl) {
+        // Check if we're in gimbal control mode with an active axis
+        if (this.activeGimbalAxis !== GimbalAxis.None) {
+            // Force gimbal control mode if an axis is active
+            this.mode = InteractionMode.GimbalControl;
+            this.handleGimbalControl(deltaX, deltaY);
+        } else if (this.mode === InteractionMode.CameraControl) {
             this.handleCameraControl(deltaX, deltaY);
-        } else {
+        } else if (this.mode === InteractionMode.ObjectControl) {
             this.handleObjectControl(deltaX, deltaY);
+        } else if (this.mode === InteractionMode.GimbalControl) {
+            this.handleGimbalControl(deltaX, deltaY);
         }
+    }
+    
+    /**
+     * Handle gimbal axis control
+     * @param deltaX Change in X position
+     * @param deltaY Change in Y position
+     */
+    private handleGimbalControl(deltaX: number, deltaY: number): void {
+        const selectedNode = this.selectionManager.getSelectedNode();
+        if (!selectedNode || this.activeGimbalAxis === GimbalAxis.None || !this.gimbalDragPlane) {
+            return;
+        }
+        
+        // Find the actual object to move (parent of the gimbal axes)
+        // If the selected node is the gimbal axes, move its parent
+        // If the selected node is the object itself, move it directly
+        const nodeToMove = selectedNode.name === 'local_axes' ? selectedNode.parent : selectedNode;
+        
+        if (!nodeToMove) {
+            console.warn('No node to move found');
+            return;
+        }
+        
+        // Get the object's world position
+        const objectPosition = nodeToMove.worldMatrix.getTranslation();
+        
+        // Get the axis direction in world space
+        let axisDir: Vector3;
+        const worldMatrix = nodeToMove.worldMatrix;
+        
+        switch (this.activeGimbalAxis) {
+            case GimbalAxis.X:
+                // Transform X axis direction (1,0,0) by the world matrix
+                axisDir = new Vector3(
+                    worldMatrix.elements[0],  // First column X component
+                    worldMatrix.elements[1],  // First column Y component
+                    worldMatrix.elements[2]   // First column Z component
+                ).normalize();
+                break;
+            case GimbalAxis.Y:
+                // Transform Y axis direction (0,1,0) by the world matrix
+                axisDir = new Vector3(
+                    worldMatrix.elements[4],  // Second column X component
+                    worldMatrix.elements[5],  // Second column Y component
+                    worldMatrix.elements[6]   // Second column Z component
+                ).normalize();
+                break;
+            case GimbalAxis.Z:
+                // Transform Z axis direction (0,0,1) by the world matrix
+                axisDir = new Vector3(
+                    worldMatrix.elements[8],  // Third column X component
+                    worldMatrix.elements[9],  // Third column Y component
+                    worldMatrix.elements[10]  // Third column Z component
+                ).normalize();
+                break;
+            default:
+                return;
+        }
+        
+        // Calculate movement amount based on mouse delta
+        // Use a scale factor that's proportional to the camera distance for better control
+        const cameraDistance = this.camera.orbitRadius;
+        const movementScale = 0.01 * Math.max(1, cameraDistance / 10);
+        
+        // Use both X and Y deltas, but weight them based on the camera view
+        // This makes the movement more intuitive from any camera angle
+        const viewDir = this.camera.position.subtract(this.camera.target).normalize();
+        const rightDir = viewDir.cross(this.camera.up).normalize();
+        const upDir = rightDir.cross(viewDir).normalize();
+        
+        // Project the axis direction onto the view plane
+        const axisOnViewPlane = axisDir.subtract(viewDir.multiply(axisDir.dot(viewDir))).normalize();
+        
+        // Calculate how much the axis aligns with the right and up directions
+        const rightAlignment = Math.abs(axisOnViewPlane.dot(rightDir));
+        const upAlignment = Math.abs(axisOnViewPlane.dot(upDir));
+        
+        // Weight the X and Y deltas based on alignment
+        const weightedDeltaX = deltaX * rightAlignment;
+        const weightedDeltaY = -deltaY * upAlignment; // Negate Y for intuitive control
+        
+        // Calculate the final movement amount
+        const movementAmount = (weightedDeltaX + weightedDeltaY) * movementScale;
+        
+        // Move the object along the selected axis
+        const movement = axisDir.multiply(movementAmount);
+        nodeToMove.translate(movement.x, movement.y, movement.z);
+        
+        console.log(`Moving along ${GimbalAxis[this.activeGimbalAxis]} axis: ${movementAmount}`);
     }
     
     /**
@@ -341,16 +486,35 @@ export class InteractionController {
     }
     
     /**
-     * Toggle between camera and object control modes
+     * Toggle between camera, object, and gimbal control modes
      */
     toggleMode(): void {
-        if (this.mode === InteractionMode.CameraControl) {
-            // Only switch to object control if an object is selected
-            if (this.selectionManager.getSelectedNode()) {
-                this.setMode(InteractionMode.ObjectControl);
-            }
-        } else {
+        const selectedNode = this.selectionManager.getSelectedNode();
+        
+        // Only allow object and gimbal control if an object is selected
+        if (!selectedNode) {
             this.setMode(InteractionMode.CameraControl);
+            return;
+        }
+        
+        // Cycle through modes: Camera -> Object -> Gimbal -> Camera
+        switch (this.mode) {
+            case InteractionMode.CameraControl:
+                this.setMode(InteractionMode.ObjectControl);
+                break;
+                
+            case InteractionMode.ObjectControl:
+                // Reset gimbal state
+                this.activeGimbalAxis = GimbalAxis.None;
+                this.gimbalDragPlane = null;
+                
+                this.setMode(InteractionMode.GimbalControl);
+                break;
+                
+            case InteractionMode.GimbalControl:
+            default:
+                this.setMode(InteractionMode.CameraControl);
+                break;
         }
     }
     
@@ -411,6 +575,210 @@ export class InteractionController {
      */
     setOnModeChange(callback: (mode: InteractionMode) => void): void {
         this.onModeChange = callback;
+    }
+    
+    /**
+     * Detect if a gimbal axis was clicked
+     * @param ndcX X coordinate in normalized device coordinates (-1 to 1)
+     * @param ndcY Y coordinate in normalized device coordinates (-1 to 1)
+     */
+    private detectGimbalAxisClick(ndcX: number, ndcY: number): void {
+        const selectedNode = this.selectionManager.getSelectedNode();
+        if (!selectedNode) return;
+        
+        // Create ray from camera through the clicked point
+        const ray = this.createRayFromCamera(ndcX, ndcY);
+        
+        // Check if the ray intersects with any of the gimbal axes
+        // This is a simplified implementation - in a real implementation, we would
+        // check for intersections with the actual gimbal geometry
+        
+        // Get the object's world position
+        const objectPosition = selectedNode.worldMatrix.getTranslation();
+        
+        // Define axis directions in world space
+        const xAxis = selectedNode.worldMatrix.transformDirection(new Vector3(1, 0, 0));
+        const yAxis = selectedNode.worldMatrix.transformDirection(new Vector3(0, 1, 0));
+        const zAxis = selectedNode.worldMatrix.transformDirection(new Vector3(0, 0, 1));
+        
+        // Define axis colors for visual identification
+        const xAxisColor = new Vector3(1, 0, 0); // Red
+        const yAxisColor = new Vector3(0, 1, 0); // Green
+        const zAxisColor = new Vector3(0, 0, 1); // Blue
+        
+        // Check distance from ray to each axis
+        // For simplicity, we'll use a cylinder test (distance from ray to line)
+        const xAxisDistance = this.distanceFromRayToLine(ray, objectPosition, xAxis);
+        const yAxisDistance = this.distanceFromRayToLine(ray, objectPosition, yAxis);
+        const zAxisDistance = this.distanceFromRayToLine(ray, objectPosition, zAxis);
+        
+        // Threshold for axis selection (in world units)
+        const threshold = 0.1;
+        
+        // Find the closest axis that's within the threshold
+        let closestAxis = GimbalAxis.None;
+        let closestDistance = threshold;
+        
+        if (xAxisDistance < closestDistance) {
+            closestAxis = GimbalAxis.X;
+            closestDistance = xAxisDistance;
+        }
+        
+        if (yAxisDistance < closestDistance) {
+            closestAxis = GimbalAxis.Y;
+            closestDistance = yAxisDistance;
+        }
+        
+        if (zAxisDistance < closestDistance) {
+            closestAxis = GimbalAxis.Z;
+            closestDistance = zAxisDistance;
+        }
+        
+        // If we found an axis, set it as active and switch to gimbal control mode
+        if (closestAxis !== GimbalAxis.None) {
+            this.activeGimbalAxis = closestAxis;
+            
+            // Force the mode to GimbalControl
+            this.mode = InteractionMode.GimbalControl;
+            
+            // Call the mode change callback if set
+            if (this.onModeChange) {
+                this.onModeChange(InteractionMode.GimbalControl);
+            }
+            
+            // Set up the drag plane for this axis
+            this.setupGimbalDragPlane(closestAxis, objectPosition);
+            
+            console.log(`Gimbal axis selected: ${GimbalAxis[closestAxis]}, Mode: ${InteractionMode[this.mode]}`);
+        }
+    }
+    
+    /**
+     * Calculate the distance from a ray to a line
+     * @param ray Ray (origin and direction)
+     * @param linePoint Point on the line
+     * @param lineDirection Direction of the line
+     * @returns Distance from ray to line
+     */
+    private distanceFromRayToLine(
+        ray: { origin: Vector3, direction: Vector3 },
+        linePoint: Vector3,
+        lineDirection: Vector3
+    ): number {
+        // Vector between ray origin and line point
+        const w0 = ray.origin.subtract(linePoint);
+        
+        // Normalize directions
+        const rayDir = ray.direction.normalize();
+        const lineDir = lineDirection.normalize();
+        
+        // Calculate terms for closest point calculation
+        const a = rayDir.dot(rayDir);
+        const b = rayDir.dot(lineDir);
+        const c = lineDir.dot(lineDir);
+        const d = rayDir.dot(w0);
+        const e = lineDir.dot(w0);
+        
+        // Calculate parameters for closest points
+        const denom = a * c - b * b;
+        
+        // If lines are parallel, use point-to-line distance
+        if (Math.abs(denom) < 0.0001) {
+            const crossProduct = w0.cross(lineDir);
+            return crossProduct.length();
+        }
+        
+        const rayParam = (b * e - c * d) / denom;
+        const lineParam = (a * e - b * d) / denom;
+        
+        // Calculate closest points on ray and line
+        const rayPoint = ray.origin.add(rayDir.multiply(rayParam));
+        const lineClosestPoint = linePoint.add(lineDir.multiply(lineParam));
+        
+        // Calculate distance between closest points
+        return rayPoint.subtract(lineClosestPoint).length();
+    }
+    
+    /**
+     * Set up the drag plane for gimbal axis movement
+     * @param axis Gimbal axis
+     * @param objectPosition Object position
+     */
+    private setupGimbalDragPlane(axis: GimbalAxis, objectPosition: Vector3): void {
+        // The drag plane is perpendicular to the camera direction and contains the axis
+        const cameraDir = this.camera.position.subtract(objectPosition).normalize();
+        
+        // Get the axis direction in world space
+        let axisDir: Vector3;
+        switch (axis) {
+            case GimbalAxis.X:
+                axisDir = new Vector3(1, 0, 0);
+                break;
+            case GimbalAxis.Y:
+                axisDir = new Vector3(0, 1, 0);
+                break;
+            case GimbalAxis.Z:
+                axisDir = new Vector3(0, 0, 1);
+                break;
+            default:
+                return;
+        }
+        
+        // The plane normal is perpendicular to both the camera direction and the axis
+        const planeNormal = cameraDir.cross(axisDir).normalize();
+        
+        // Store the drag plane
+        this.gimbalDragPlane = {
+            normal: planeNormal,
+            point: objectPosition
+        };
+    }
+    
+    /**
+     * Create a ray from the camera through a point in normalized device coordinates
+     * @param ndcX X coordinate in normalized device coordinates (-1 to 1)
+     * @param ndcY Y coordinate in normalized device coordinates (-1 to 1)
+     * @returns Ray origin and direction
+     */
+    private createRayFromCamera(ndcX: number, ndcY: number): { origin: Vector3, direction: Vector3 } {
+        // Get camera position (ray origin)
+        const origin = this.camera.position.clone();
+        
+        // Calculate ray direction
+        // This is a simplified version - in a real implementation, we would use the camera's
+        // projection and view matrices to calculate the exact ray direction
+        
+        // For perspective camera:
+        // 1. Create a point in clip space
+        const clipX = ndcX;
+        const clipY = ndcY;
+        const clipZ = -1.0; // Near plane
+        
+        // 2. Transform to view space
+        const invProjection = this.camera.projectionMatrix.inverse();
+        const viewSpacePos = invProjection.transformVector(new Vector3(clipX, clipY, clipZ));
+        
+        // 3. Transform to world space
+        const invView = this.camera.viewMatrix.inverse();
+        const worldSpacePos = invView.transformVector(viewSpacePos);
+        
+        // 4. Calculate direction from camera to this point
+        const direction = worldSpacePos.subtract(origin).normalize();
+        
+        return { origin, direction };
+    }
+    
+    /**
+     * Set the visibility of gimbal axes
+     * @param visible Whether the gimbal axes should be visible
+     */
+    setGimbalVisibility(visible: boolean): void {
+        // Find all gimbal axes in the scene and set their visibility
+        this.scene.traverse((node: SceneNode) => {
+            if (node.name === 'local_axes') {
+                node.visible = visible;
+            }
+        });
     }
     
     /**

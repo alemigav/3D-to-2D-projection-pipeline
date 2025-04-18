@@ -159,24 +159,32 @@ export class Renderer {
         if (isWebGL2) {
             return `#version 300 es
                 in vec3 aPosition;
+                in vec3 aColor;
                 
                 uniform mat4 uModelMatrix;
                 uniform mat4 uViewMatrix;
                 uniform mat4 uProjectionMatrix;
                 
+                out vec3 vColor;
+                
                 void main() {
+                    vColor = aColor;
                     gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
                 }
             `;
         } else {
             return `
                 attribute vec3 aPosition;
+                attribute vec3 aColor;
                 
                 uniform mat4 uModelMatrix;
                 uniform mat4 uViewMatrix;
                 uniform mat4 uProjectionMatrix;
                 
+                varying vec3 vColor;
+                
                 void main() {
+                    vColor = aColor;
                     gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
                 }
             `;
@@ -196,10 +204,16 @@ export class Renderer {
                 
                 uniform vec3 uColor;
                 
+                in vec3 vColor;
                 out vec4 fragColor;
                 
                 void main() {
-                    fragColor = vec4(uColor, 1.0);
+                    // Check if this is a coordinate axis (has vertex color)
+                    bool isAxis = vColor.r + vColor.g + vColor.b > 0.0;
+                    
+                    // Use vertex color for axes, uniform color for other wireframes
+                    vec3 color = isAxis ? vColor : uColor;
+                    fragColor = vec4(color, 1.0);
                 }
             `;
         } else {
@@ -208,8 +222,15 @@ export class Renderer {
                 
                 uniform vec3 uColor;
                 
+                varying vec3 vColor;
+                
                 void main() {
-                    gl_FragColor = vec4(uColor, 1.0);
+                    // Check if this is a coordinate axis (has vertex color)
+                    bool isAxis = vColor.r + vColor.g + vColor.b > 0.0;
+                    
+                    // Use vertex color for axes, uniform color for other wireframes
+                    vec3 color = isAxis ? vColor : uColor;
+                    gl_FragColor = vec4(color, 1.0);
                 }
             `;
         }
@@ -226,6 +247,7 @@ export class Renderer {
             return `#version 300 es
                 in vec3 aPosition;
                 in vec3 aNormal;
+                in vec3 aColor;
                 
                 uniform mat4 uModelMatrix;
                 uniform mat4 uViewMatrix;
@@ -233,10 +255,12 @@ export class Renderer {
                 
                 out vec3 vNormal;
                 out vec3 vPosition;
+                out vec3 vColor;
                 
                 void main() {
                     vPosition = (uModelMatrix * vec4(aPosition, 1.0)).xyz;
                     vNormal = mat3(uModelMatrix) * aNormal;
+                    vColor = aColor;
                     
                     gl_Position = uProjectionMatrix * uViewMatrix * vec4(vPosition, 1.0);
                 }
@@ -245,6 +269,7 @@ export class Renderer {
             return `
                 attribute vec3 aPosition;
                 attribute vec3 aNormal;
+                attribute vec3 aColor;
                 
                 uniform mat4 uModelMatrix;
                 uniform mat4 uViewMatrix;
@@ -252,10 +277,12 @@ export class Renderer {
                 
                 varying vec3 vNormal;
                 varying vec3 vPosition;
+                varying vec3 vColor;
                 
                 void main() {
                     vPosition = (uModelMatrix * vec4(aPosition, 1.0)).xyz;
                     vNormal = mat3(uModelMatrix) * aNormal;
+                    vColor = aColor;
                     
                     gl_Position = uProjectionMatrix * uViewMatrix * vec4(vPosition, 1.0);
                 }
@@ -276,6 +303,7 @@ export class Renderer {
                 
                 in vec3 vNormal;
                 in vec3 vPosition;
+                in vec3 vColor;
                 
                 uniform vec3 uColor;
                 uniform vec3 uLightDirection;
@@ -285,12 +313,15 @@ export class Renderer {
                 out vec4 fragColor;
                 
                 void main() {
+                    // Use vertex color if available, otherwise use uniform color
+                    vec3 baseColor = vColor.r + vColor.g + vColor.b > 0.0 ? vColor : uColor;
+                    
                     vec3 normal = normalize(vNormal);
                     vec3 lightDir = normalize(uLightDirection);
                     
                     float diffuse = max(dot(normal, lightDir), 0.0);
-                    vec3 diffuseColor = uColor * uLightColor * diffuse;
-                    vec3 ambientColor = uColor * uAmbientColor;
+                    vec3 diffuseColor = baseColor * uLightColor * diffuse;
+                    vec3 ambientColor = baseColor * uAmbientColor;
                     
                     vec3 finalColor = ambientColor + diffuseColor;
                     
@@ -303,6 +334,7 @@ export class Renderer {
                 
                 varying vec3 vNormal;
                 varying vec3 vPosition;
+                varying vec3 vColor;
                 
                 uniform vec3 uColor;
                 uniform vec3 uLightDirection;
@@ -310,12 +342,15 @@ export class Renderer {
                 uniform vec3 uAmbientColor;
                 
                 void main() {
+                    // Use vertex color if available, otherwise use uniform color
+                    vec3 baseColor = vColor.r + vColor.g + vColor.b > 0.0 ? vColor : uColor;
+                    
                     vec3 normal = normalize(vNormal);
                     vec3 lightDir = normalize(uLightDirection);
                     
                     float diffuse = max(dot(normal, lightDir), 0.0);
-                    vec3 diffuseColor = uColor * uLightColor * diffuse;
-                    vec3 ambientColor = uColor * uAmbientColor;
+                    vec3 diffuseColor = baseColor * uLightColor * diffuse;
+                    vec3 ambientColor = baseColor * uAmbientColor;
                     
                     vec3 finalColor = ambientColor + diffuseColor;
                     
