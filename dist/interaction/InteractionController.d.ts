@@ -32,6 +32,7 @@ export declare class InteractionController {
     private lastMouseX;
     private lastMouseY;
     private mouseButton;
+    private gimbal;
     private activeGimbalAxis;
     private gimbalDragPlane;
     private rotationSpeed;

@@ -5,6 +5,7 @@
 import { Camera } from '../core/Camera';
 import { Scene } from '../scene/Scene';
 import { SceneNode } from '../scene/SceneNode';
+import { Gimbal } from '../scene/Gimbal';
 import { Vector3 } from '../math/Vector3';
 import { Quaternion } from '../math/Quaternion';
 import { SelectionManager } from './SelectionManager';
@@ -42,6 +43,7 @@ export class InteractionController {
     private mouseButton: number = 0;
     
     // Gimbal control state
+    private gimbal: Gimbal | null = null;
     private activeGimbalAxis: GimbalAxis = GimbalAxis.None;
     private gimbalDragPlane: { normal: Vector3, point: Vector3 } | null = null;
     
@@ -189,16 +191,63 @@ export class InteractionController {
         });
         
         // Listen for selection changes
-        this.canvas.addEventListener('object-selected', ((event: Event) => {
-            // Only switch to object control mode if not already in gimbal control mode
-            if (this.mode !== InteractionMode.GimbalControl) {
+        this.canvas.addEventListener('object-selected', ((event: CustomEvent<SceneNode>) => {
+            const selectedNode = event.detail;
+            if (!selectedNode) return;
+
+            // Create or update the gimbal for the selected node
+            if (!this.gimbal) {
+                this.gimbal = new Gimbal(selectedNode);
+                // Add gimbal to the scene root. The visible 'local_axes' should become its child.
+                this.scene.getRoot().addChild(this.gimbal); 
+            } else {
+                this.gimbal.controlledObject = selectedNode;
+            }
+            // Sync gimbal position/rotation with the newly selected object
+            this.gimbal.syncWithObject(); 
+
+            // Find the visible gimbal representation ('local_axes')
+            const visibleGimbal = this.scene.findNodeByName('local_axes');
+            if (visibleGimbal) {
+                 // Ensure it's a child of our logical gimbal and visible
+                if (visibleGimbal.parent !== this.gimbal) {
+                    // Remove from previous parent (could be scene root or another object)
+                    visibleGimbal.parent?.removeChild(visibleGimbal); 
+                    // Add to our logical gimbal
+                    this.gimbal.addChild(visibleGimbal); 
+                    // Reset local transform if needed, as it's now relative to the gimbal
+                    visibleGimbal.position.set(0, 0, 0); 
+                    visibleGimbal.rotation.set(0, 0, 0, 1);
+                    visibleGimbal.scale.set(1, 1, 1);
+                    visibleGimbal.updateMatrices();
+                }
+                visibleGimbal.visible = true; // Make sure it's visible
+            } else {
+                // If the visible gimbal doesn't exist, we might need to create it.
+                // For now, just warn. Creation logic would depend on how 'local_axes' is generated.
+                console.warn("Visible gimbal node 'local_axes' not found in the scene.");
+            }
+
+            // Switch to object control mode if not currently dragging a gimbal axis
+            if (this.activeGimbalAxis === GimbalAxis.None) {
                 this.setMode(InteractionMode.ObjectControl);
             }
         }) as EventListener);
         
         this.canvas.addEventListener('object-deselected', (() => {
-            // Switch back to camera control mode when no object is selected
-            this.setMode(InteractionMode.CameraControl);
+            // Hide the visible gimbal when nothing is selected
+            if (this.gimbal) {
+                 // Find the visible gimbal, which should be a child now
+                 const visibleGimbal = this.gimbal.findChildByName('local_axes'); 
+                 if (visibleGimbal) {
+                     visibleGimbal.visible = false;
+                 }
+            }
+            // Reset gimbal state
+            this.activeGimbalAxis = GimbalAxis.None; 
+            this.gimbalDragPlane = null;
+            // Switch back to camera control mode
+            this.setMode(InteractionMode.CameraControl); 
         }) as EventListener);
         
         // Keyboard events for mode switching
@@ -319,9 +368,12 @@ export class InteractionController {
         // Calculate the final movement amount
         const movementAmount = (weightedDeltaX + weightedDeltaY) * movementScale;
         
-        // Move the object along the selected axis
+        // Move the gimbal along the selected axis
         const movement = axisDir.multiply(movementAmount);
-        nodeToMove.translate(movement.x, movement.y, movement.z);
+        if (this.gimbal) {
+            this.gimbal.translate(movement.x, movement.y, movement.z);
+            this.gimbal.syncToObject();
+        }
         
         console.log(`Moving along ${GimbalAxis[this.activeGimbalAxis]} axis: ${movementAmount}`);
     }
@@ -413,12 +465,20 @@ export class InteractionController {
             const right = forward.cross(this.camera.up).normalize();
             const up = right.cross(forward).normalize();
             
-            // Translate the object
-            selectedNode.translate(
-                right.x * translateX + up.x * translateY,
-                right.y * translateX + up.y * translateY,
-                right.z * translateX + up.z * translateY
-            );
+            // Check if a gimbal exists and controls this node
+            if (this.gimbal && this.gimbal.controlledObject === selectedNode) {
+                // Translate the gimbal instead
+                const movement = right.multiply(translateX).add(up.multiply(translateY));
+                this.gimbal.translate(movement.x, movement.y, movement.z);
+                this.gimbal.syncToObject();
+            } else {
+                // Translate the object directly if no gimbal is involved
+                selectedNode.translate(
+                    right.x * translateX + up.x * translateY,
+                    right.y * translateX + up.y * translateY,
+                    right.z * translateX + up.z * translateY
+                );
+            }
         }
     }
     
@@ -636,6 +696,23 @@ export class InteractionController {
         
         // If we found an axis, set it as active and switch to gimbal control mode
         if (closestAxis !== GimbalAxis.None) {
+            // Create gimbal if needed
+            if (!this.gimbal) {
+                this.gimbal = new Gimbal(selectedNode);
+                this.scene.getRoot().addChild(this.gimbal);
+                
+                // Ensure the visible gimbal lines are connected to our Gimbal instance
+                const visibleGimbal = this.scene.findNodeByName('local_axes');
+                if (visibleGimbal && visibleGimbal !== this.gimbal) {
+                    visibleGimbal.parent?.removeChild(visibleGimbal);
+                    this.gimbal.addChild(visibleGimbal);
+                }
+            } else {
+                this.gimbal.controlledObject = selectedNode;
+                this.gimbal.syncWithObject();
+            }
+            
+            this.gimbal.setActiveAxis(GimbalAxis[closestAxis].toLowerCase() as 'x'|'y'|'z');
             this.activeGimbalAxis = closestAxis;
             
             // Force the mode to GimbalControl
