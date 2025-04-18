@@ -33,4 +33,36 @@ export declare class Gimbal extends SceneNode {
      * Update controlled object position to match gimbal
      */
     syncToObject(): void;
+    /**
+     * Rotate the gimbal (and sync to object)
+     * Overrides SceneNode.rotate to include syncing
+     * @param axis Rotation axis
+     * @param angle Rotation angle in radians
+     */
+    rotate(axis: Vector3, angle: number): void;
+    /**
+     * Set the gimbal rotation (and sync to object)
+     * Overrides SceneNode.setRotationFromEuler to include syncing
+     * @param x X rotation in radians
+     * @param y Y rotation in radians
+     * @param z Z rotation in radians
+     * @param order Rotation order (default: 'XYZ')
+     */
+    setRotationFromEuler(x: number, y: number, z: number, order?: string): void;
+    /**
+    * Translate the gimbal (and sync to object)
+    * Overrides SceneNode.translate to include syncing
+    * @param x X translation
+    * @param y Y translation
+    * @param z Z translation
+    */
+    translate(x: number, y: number, z: number): void;
+    /**
+     * Set the gimbal position (and sync to object)
+     * Overrides SceneNode.setPosition to include syncing
+     * @param x X position
+     * @param y Y position
+     * @param z Z position
+     */
+    setPosition(x: number, y: number, z: number): void;
 }
